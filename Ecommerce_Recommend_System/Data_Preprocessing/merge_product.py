@@ -1,0 +1,45 @@
+import pandas as pd
+
+# 1. Đọc CSV và chuẩn bị danh sách ASIN mục tiêu
+df_csv = pd.read_csv('./train_data/Electronics.csv')
+df_csv.columns = df_csv.columns.str.strip().str.lower()
+asin_set = set(df_csv['parent_asin'].astype(str).str.strip().unique())
+
+# 2. Đọc JSON theo Chunk và LỌC LUÔN
+keep_columns = ['details', 'price', 'rating_number', 'average_rating', 'main_category','categories','store','parent_asin',]
+chunks = pd.read_json('../Data/meta_Electronics.jsonl', lines=True, chunksize=10000)
+
+list_df = []
+count = 0
+
+print("Đang quét file JSON và lọc sản phẩm trùng khớp...")
+
+for chunk in chunks:
+    chunk.columns = chunk.columns.str.strip().str.lower()
+    
+    if 'parent_asin' in chunk.columns:
+        # Chuẩn hóa cột parent_asin trong JSON
+        chunk['parent_asin'] = chunk['parent_asin'].astype(str).str.strip()
+        
+        # CHỐT CHẶN QUAN TRỌNG: Chỉ giữ lại những dòng có trong asin_set
+        filtered_chunk = chunk[chunk['parent_asin'].isin(asin_set)]
+        
+        if not filtered_chunk.empty:
+            valid_cols = [c for c in keep_columns if c in filtered_chunk.columns]
+            list_df.append(filtered_chunk[valid_cols])
+            
+    count += 1
+    if count % 20 == 0:
+        print(f" Đã quét qua {count * 10000} dòng...")
+
+# 3. Gom kết quả và xuất file
+if list_df:
+    result = pd.concat(list_df, ignore_index=True)
+    result = result.drop_duplicates(subset=['parent_asin'], keep='first')
+    result['last_category'] = result['categories'].apply(
+    lambda x: x[-1] if isinstance(x, list) and len(x) > 0 else 'unknown'
+)
+    result.to_csv('./train_data/amazon_product_data.csv', index=False, encoding='utf-8-sig') 
+    print(f"Tìm thấy thành công {len(result)} sản phẩm trùng khớp!")
+else:
+    print("Không tìm thấy sản phẩm nào trùng ASIN.")
