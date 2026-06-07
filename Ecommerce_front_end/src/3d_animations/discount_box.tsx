@@ -8,13 +8,13 @@ const Discount_Box = () => {
     useEffect(() => {
         if (!sceneRef.current) return;
         const { Engine, Render, Runner, Bodies, Composite, Mouse, MouseConstraint, Body } = Matter;
-        
+
         const engine = engineRef.current;
         engine.gravity.x = 0;
         engine.gravity.y = 0;
 
         const width = sceneRef.current.clientWidth;
-        const height = sceneRef.current.clientHeight;
+        const height = 200; // Cố định 200px để khớp với CSS bên ngoài
 
         const render = Render.create({
             element: sceneRef.current,
@@ -27,24 +27,32 @@ const Discount_Box = () => {
             }
         });
 
-        // 3. Tạo các bức tường bao quanh (Tránh vật thể bay mất khi va chạm)
-        const thickness = 40; // Độ dày của tường
+        // Khóa chặt kích thước canvas hiển thị theo khung 200px
+        if (render.canvas) {
+            render.canvas.style.display = 'block';
+            render.canvas.style.width = '100%';
+            render.canvas.style.height = '200px';
+            render.canvas.style.maxHeight = '200px';
+        }
+
+        // Tạo các bức tường bao quanh dựa trên kích thước 200px
+        const thickness = 100; 
         const ground = Bodies.rectangle(width / 2, height + thickness / 2, width, thickness, { isStatic: true });
         const ceiling = Bodies.rectangle(width / 2, -thickness / 2, width, thickness, { isStatic: true });
         const leftWall = Bodies.rectangle(-thickness / 2, height / 2, thickness, height, { isStatic: true });
         const rightWall = Bodies.rectangle(width + thickness / 2, height / 2, thickness, height, { isStatic: true });
 
-        // 4. Tạo các hộp quà ở trong vùng nhìn thấy (Tọa độ Y nằm trong khoảng 0 -> height)
+        // Tạo các hộp quà ở trong vùng nhìn thấy
         const boxes = Array.from({ length: 4 }).map(() => {
             const box = Bodies.rectangle(
-                Math.random() * (width - 60) + 30, 
-                Math.random() * (height - 60) + 30, 
-                50, 
-                50, 
+                Math.random() * (width - 60) + 30,
+                Math.random() * (height - 60) + 30,
+                50,
+                50,
                 {
-                    restitution: 0.8, 
-                    friction: 0,      
-                    frictionAir: 0.01, 
+                    restitution: 0.8,
+                    friction: 0,
+                    frictionAir: 0.01,
                     render: {
                         sprite: {
                             texture: '/images/gift.png',
@@ -55,7 +63,7 @@ const Discount_Box = () => {
                 }
             );
 
-            // Cú hích nhẹ ban đầu: Tạo vận tốc ngẫu nhiên để các hộp tự chuyển động lơ lửng
+            // Cú hích nhẹ ban đầu
             Body.setVelocity(box, {
                 x: (Math.random() - 0.5) * 3,
                 y: (Math.random() - 0.5) * 3
@@ -64,7 +72,7 @@ const Discount_Box = () => {
             return box;
         });
 
-        // 5. Tương tác chuột
+        // Tương tác chuột
         const mouse = Mouse.create(render.canvas);
         const mouseConstraint = MouseConstraint.create(engine, {
             mouse: mouse,
@@ -79,7 +87,7 @@ const Discount_Box = () => {
         const runner = Runner.create();
         Runner.run(runner, engine);
 
-        // 6. Cleanup khi component unmount
+        // Cleanup khi component unmount
         return () => {
             Render.stop(render);
             Engine.clear(engine);
@@ -96,7 +104,7 @@ const Discount_Box = () => {
             ref={sceneRef}
             style={{
                 width: '100%',
-                height: '200px',
+                height: '200px', // Đảm bảo đồng bộ với chiều cao mong muốn
                 backgroundColor: 'wheat',
                 overflow: 'hidden',
                 position: 'relative',
@@ -104,17 +112,18 @@ const Discount_Box = () => {
                 fontWeight: 'bold',
                 color: '#20e03a',
                 textAlign: 'center',
-            }} 
+            }}
         >
-            {/* pointerEvents: 'none' để chữ không chặn việc tương tác chuột vào canvas phía dưới */}
+            {/* Chữ hiển thị ở giữa */}
             <div style={{
                 position: 'absolute',
                 top: "50%",
                 left: "50%",
                 transform: 'translate(-50%, -50%)',
                 textShadow: '2px 2px 4px #000000',
-                pointerEvents: 'none', 
-                zIndex: 10
+                pointerEvents: 'none',
+                zIndex: 10,
+                whiteSpace: 'nowrap'
             }}>
                 Save 40% On All Items
             </div>
