@@ -154,7 +154,7 @@ class data_preprocessing():
         self.Electronics_Product["category_code"]   = self.final_category_encoder.fit_transform(
             self.Electronics_Product["last_category"]
         )
-        self.Electronics_Product['main_category']   = self.main_category_encoder.fit_transform(
+        self.Electronics_Product['main_category_code']   = self.main_category_encoder.fit_transform(
             self.Electronics_Product['main_category']
         )
         self.Electronics_Product['parent_asin_code'] = self.parent_encoder.fit_transform(

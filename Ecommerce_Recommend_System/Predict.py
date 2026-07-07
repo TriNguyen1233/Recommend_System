@@ -24,7 +24,7 @@ class implement_recommend:
             'color':          joblib.load(os.path.join(encoding_dir, 'color_encoder.pkl')),
             'parent':         joblib.load(os.path.join(encoding_dir, 'parent_encoder.pkl')),
             'final_category': joblib.load(os.path.join(encoding_dir, 'final_category_encoder.pkl')),
-            'main_category':  joblib.load(os.path.join(encoding_dir, 'main_category_encoder.pkl')),
+            'main_category_code':  joblib.load(os.path.join(encoding_dir, 'main_category_encoder.pkl')),
         }
     def build_model(self):
         checkpoint = torch.load('./content/weights/best_model_v2.pth', map_location=torch.device('cpu'),weights_only=False)
@@ -119,7 +119,7 @@ class implement_recommend:
         rating_number    = torch.tensor(product_rating_df["rating_number"].values,      dtype=torch.float32)
         user_rating_avg  = torch.tensor(product_rating_df["user_avg_rating"].values,    dtype=torch.float32)
         user_rate_var    = torch.tensor(product_rating_df['user_rating_var'].values,    dtype=torch.float32)
-        main_category    = torch.tensor(product_rating_df["main_category"].values.astype(int), dtype=torch.long)
+        main_category_code    = torch.tensor(product_rating_df["main_category_code"].values.astype(int), dtype=torch.long)
         color_code       = torch.tensor(product_rating_df["color_code"].values,         dtype=torch.long)
         store_code       = torch.tensor(product_rating_df["store_code"].values,         dtype=torch.long)
         parent_asin_code = torch.tensor(product_rating_df["parent_asin_code"].values,   dtype=torch.long)
@@ -134,7 +134,7 @@ class implement_recommend:
         # asin_tensor      = asin_tensor.clamp(0, checkpoint['num_items'] - 1)
         # brand_code       = brand_code.clamp(0, checkpoint['num_brands'] - 1)
         # category_code    = category_code.clamp(0, checkpoint['num_categories'] - 1)
-        # main_category    = main_category.clamp(0, checkpoint['num_main_cats'] - 1)
+        # main_category_code    = main_category_code.clamp(0, checkpoint['num_main_cats'] - 1)
         # color_code       = color_code.clamp(0, checkpoint['num_colors'] - 1)
         # store_code       = store_code.clamp(0, checkpoint['num_stores'] - 1)
         # parent_asin_code = parent_asin_code.clamp(0, checkpoint['num_parent_asins'] - 1)
@@ -163,7 +163,7 @@ class implement_recommend:
                 user_code, asin_tensor, history,
                 category_code, brand_code,
                 price_values, avg_rating, rating_number,
-                main_category, user_rating_avg, user_rate_var,
+                main_category_code, user_rating_avg, user_rate_var,
                 color_code, store_code, parent_asin_code,
                 country_code, item_avg_rating,
                 user_brand_count, price_deviation, user_recency,

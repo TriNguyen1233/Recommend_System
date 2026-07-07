@@ -14,7 +14,6 @@ def create_rich_content_embedding(row):
     và trích xuất dữ liệu thông minh để tạo Embedding Vector.
     """
     try:
-        # 1. Lấy thông tin cơ bản trực tiếp từ NamedTuple bằng getattr (An toàn tuyệt đối)
         title = str(getattr(row, 'title', '')).strip()
         brand = str(getattr(row, 'brand', '')).strip()
         main_cat = str(getattr(row, 'main_category', '')).strip()
@@ -28,7 +27,6 @@ def create_rich_content_embedding(row):
         if main_cat and main_cat.lower() != 'nan':
             rich_text += f" Category: {main_cat}."
             
-        # 2. Xử lý trường 'details' (Nó có thể là Dict sẵn hoặc chuỗi JSON String)
         details_raw = getattr(row, 'details', {})
         details = {}
         
@@ -45,14 +43,12 @@ def create_rich_content_embedding(row):
         elif isinstance(details_raw, dict):
             details = details_raw
                 
-        # 3. Quét và giải nén các thông số kỹ thuật bên trong details
         if isinstance(details, dict) and details:
             spec_sentences = []
             for key, value in details.items():
                 if key == 'Best Sellers Rank' or pd.isna(value) or str(value).lower() == 'nan':
                     continue
                     
-                # Nếu value con lại là một dict (ví dụ: rank chi tiết)
                 if isinstance(value, dict):
                     value = ", ".join([f"{k}: {v}" for k, v in value.items()])
                     
@@ -61,7 +57,6 @@ def create_rich_content_embedding(row):
             if spec_sentences:
                 rich_text += " Technical Details: " + ". ".join(spec_sentences) + "."
 
-        # 4. Gọi mô hình Ollama sinh Vector riêng biệt cho dòng này
         response = ollama.embed(
             model='nomic-embed-text',
             input=rich_text,
@@ -83,7 +78,6 @@ def insert_df_pg(df):
 
     print(f"Đang kết nối tới database: {db_name}...")
     
-    # Sử dụng autocommit=True kết hợp với cursor() chuẩn
     with psycopg.connect(connection_string, autocommit=True) as conn:
         with conn.cursor() as cur:
             insert_query = """
@@ -101,10 +95,8 @@ def insert_df_pg(df):
                 try:
                     parent_asin = str(row.parent_asin)
                     
-                    # 1. Gọi mô hình sinh Vector mới (Đảm bảo biến vector_data được refresh liên tục)
                     vector_data = create_rich_content_embedding(row)
                     
-                    # Nếu dòng bị lỗi không tạo được vector, bỏ qua lập tức, không cố insert vào DB
                     if vector_data is None:
                         print(f"⚠️ Bỏ qua ASIN {parent_asin} vì không thể tạo Embedding.")
                         continue

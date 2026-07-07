@@ -32,6 +32,7 @@ app.add_middleware(
 )
 implement=implement_recommend()
 vector=product_vector
+
 @app.post("/api/v1/recommendations")
 def recommend_item(input:recommend_input):
     
@@ -50,7 +51,8 @@ def recommend_item(input:recommend_input):
                 "main_category":product[3],
                 "category":product[4],
                 "image_url":product[5],
-                "store":product[6]}
+                "store":product[6]
+                }
         if(len(product)<20):
             products.append(product_dict)
         if len(recommend_product)>5:

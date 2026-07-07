@@ -143,9 +143,9 @@ class Neural_Network(nn.Module):
         self.mlp_bn3 = nn.BatchNorm1d(64)
         self.mlp_fc4 = nn.Linear(64, 32)
 
-        self.mlp_drop1 = nn.Dropout(0.4)   # tăng từ 0.3
-        self.mlp_drop2 = nn.Dropout(0.3)   # tăng từ 0.2
-        self.mlp_drop3 = nn.Dropout(0.2)   # tăng từ 0.1
+        self.mlp_drop1 = nn.Dropout(0.4)   
+        self.mlp_drop2 = nn.Dropout(0.3)   
+        self.mlp_drop3 = nn.Dropout(0.2)  
 
         # Residual projection: 256→128 để cộng vào layer 2
         self.res_proj = nn.Linear(256, 128)
@@ -195,7 +195,7 @@ class Neural_Network(nn.Module):
                 user_id, item_id, history_item_ids,
                 category_code, brand_code,
                 price_value, avg_rating, rating_number,
-                main_category, user_avg, user_var,
+                main_category_code, user_avg, user_var,
                 color_code, store_code, parent_asin_code, country_code,
                 item_avg_rating,
                 user_brand_count, price_deviation, user_recency,
@@ -244,7 +244,7 @@ class Neural_Network(nn.Module):
         # ── Categorical embeddings ───────────────────────────
         b           = self.feat_dropout(self.brand_embedding(brand_code))
         c           = self.feat_dropout(self.category_emb(category_code))
-        m_cat       = self.feat_dropout(self.main_category_emb(main_category))
+        m_cat       = self.feat_dropout(self.main_category_emb(main_category_code))
         color_emb   = self.feat_dropout(self.color_embedding(color_code))
         store_emb   = self.feat_dropout(self.store_embedding(store_code))
         parent_emb  = self.feat_dropout(self.parent_asin_embedding(parent_asin_code))
@@ -423,7 +423,7 @@ def main():
     num_brand         = int(Product_Rating_Data['brand_code'].max() + 1)
     num_country       = int(Product_Rating_Data['country_code'].max() + 1)
     num_category      = int(Product_Rating_Data['category_code'].max() + 1)
-    num_main_category = int(Product_Rating_Data['main_category'].max() + 1)
+    num_main_category = int(Product_Rating_Data['main_category_code'].max() + 1)
     num_store         = int(Product_Rating_Data['store_code'].max() + 1)
     num_color         = int(Product_Rating_Data['color_code'].max() + 1)
     num_parent_asin   = int(Product_Rating_Data['parent_asin_code'].max() + 1)
@@ -532,7 +532,7 @@ def main():
             self.rating_number      = torch.tensor(df["rating_number"].values, dtype=torch.float32)
             self.user_rating_avg    = torch.tensor(df["user_avg_rating"].values, dtype=torch.float32)
             self.user_rate_var      = torch.tensor(df['user_rating_var'].values, dtype=torch.float32)
-            self.main_category      = torch.tensor(df["main_category"].values.astype(int), dtype=torch.long)
+            self.main_category_code      = torch.tensor(df["main_category_code"].values.astype(int), dtype=torch.long)
             self.color_code         = torch.tensor(df["color_code"].values, dtype=torch.long)
             self.store_code         = torch.tensor(df["store_code"].values, dtype=torch.long)
             self.parent_asin_code   = torch.tensor(df["parent_asin_code"].values, dtype=torch.long)
@@ -555,7 +555,7 @@ def main():
                 self.history_brand[idx],  self.history_cat[idx],
                 self.category_code[idx],  self.brand_code[idx],     self.ratings[idx],
                 self.price_values[idx],   self.avg_rating[idx],     self.rating_number[idx],
-                self.main_category[idx],  self.user_rating_avg[idx], self.user_rate_var[idx],
+                self.main_category_code[idx],  self.user_rating_avg[idx], self.user_rate_var[idx],
                 self.color_code[idx],     self.store_code[idx],     self.parent_asin_code[idx],
                 self.country_code[idx],   self.item_avg_rating[idx],
                 self.user_brand_count[idx], self.price_deviation[idx], self.user_recency[idx],
@@ -630,7 +630,7 @@ def main():
             price_value       = price_b.to(device).float(),
             avg_rating        = avg_r.to(device).float(),
             rating_number     = rat_num.to(device).float(),
-            main_category     = main_cat.to(device).long(),
+            main_category_code     = main_cat.to(device).long(),
             user_avg          = user_avg.to(device).float(),
             user_var          = user_var.to(device).float(),
             color_code        = color_b.to(device).long(),
@@ -649,7 +649,7 @@ def main():
             d['user_id'], d['item_id'], d['history_item_ids'],
             d['category_code'], d['brand_code'],
             d['price_value'], d['avg_rating'], d['rating_number'],
-            d['main_category'], d['user_avg'], d['user_var'],
+            d['main_category_code'], d['user_avg'], d['user_var'],
             d['color_code'], d['store_code'], d['parent_asin_code'],
             d['country_code'], d['item_avg_rating'],
             d['user_brand_count'], d['price_deviation'], d['user_recency'],
@@ -716,6 +716,15 @@ def main():
     # ════════════════════════════════════════════════════════════
     # 12. TRAINING LOOP
     # ════════════════════════════════════════════════════════════
+    num_users        = Product_Rating_Data['user_code'].max() + 1
+    num_items        = Product_Rating_Data['asin_code'].max() + 1
+    num_brands       = Product_Rating_Data['brand_code'].max() + 1
+    num_categories   = Product_Rating_Data['category_code'].max() + 1
+    num_main_cats    = Product_Rating_Data['main_category_code'].max() + 1
+    num_colors       = Product_Rating_Data['color_code'].max() + 1
+    num_stores       = Product_Rating_Data['store_code'].max() + 1
+    num_parent_asins = Product_Rating_Data['parent_asin_code'].max() + 1
+    num_countries    = Product_Rating_Data['country_code'].max() + 1
     best_loss         = float('inf')
     no_improve_epochs = 0
     EARLY_STOP        = 40
@@ -737,10 +746,20 @@ def main():
             best_loss         = test_loss
             no_improve_epochs = 0
             torch.save({
-                'epoch':                epoch + 1,
-                'model_state_dict':     model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-                'test_acc': test_acc, 'f1': f1, 'auc': auc,
+            'epoch':                epoch + 1,
+            'model_state_dict':     model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'test_acc': test_acc, 'f1': f1, 'auc': auc,
+            # Lưu vocab sizes
+            'num_brands':       num_brands,
+            'num_colors':       num_colors,
+            'num_stores':       num_stores,
+            'num_countries':    num_countries,
+            'num_users':        num_users,
+            'num_items':        num_items,
+            'num_categories':   num_categories,
+            'num_main_cats':    num_main_cats,
+            'num_parent_asins': num_parent_asins,
             }, "./content/weights/best_model_v2.pth")
             print(f"--> Saved ep{epoch+1} | acc={test_acc:.2f}% | F1={f1:.4f} | AUC={auc:.4f}")
         else:
