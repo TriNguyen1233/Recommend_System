@@ -17,7 +17,7 @@ TARGET_ITEM     = 18   # k-core thực sự
 # ════════════════════════════════════════════════════
 # BƯỚC 1: ĐẾM TẦN SUẤT (scan nhẹ để lọc cứng extreme outliers)
 # ════════════════════════════════════════════════════
-print("Bước 1: Đếm tần suất...")
+print("step 1: Pre-filtering extreme outliers...")
 user_counts = collections.Counter()
 item_counts = collections.Counter()
 
@@ -34,7 +34,7 @@ del user_counts, item_counts
 # ════════════════════════════════════════════════════
 # BƯỚC 2: LOAD DATA (chỉ load rows khớp pre-filter)
 # ════════════════════════════════════════════════════
-print("Bước 2: Load data...")
+print("step 2: Load data...")
 dtype_dict = {
     'rating': 'float32',
     'verified_purchase': 'bool',
@@ -61,7 +61,7 @@ for chunk in pd.read_json(file_path, lines=True, chunksize=chunk_size):
     if not chunk.empty:
         chunks.append(chunk)
         total_rows += len(chunk)
-        print(f"  {total_rows:,} rows đã load...")
+        print(f"  {total_rows:,} rows loaded...")
 
 del valid_users, valid_items
 
@@ -92,11 +92,11 @@ def filter_k_core(df, min_u, min_i, verbose=True):
             break
     return df
 
-print(f"\nBước 3: Iterative k-core (target u≥{TARGET_USER}, i≥{TARGET_ITEM})...")
+print(f"\nstep 3: Iterative k-core (target u≥{TARGET_USER}, i≥{TARGET_ITEM})...")
 df = filter_k_core(df, TARGET_USER, TARGET_ITEM)
 
 # ════════════════════════════════════════════════════
-# BƯỚC 4: THỐNG KÊ & LƯU
+# step   4: THỐNG KÊ & LƯU
 # ════════════════════════════════════════════════════
 num_users   = df['user_id'].nunique()
 num_items   = df['asin'].nunique()
@@ -117,4 +117,4 @@ print(f"Sparsity    : {sparsity:.4f}%")
 print("="*50)
 
 df.to_csv('./train_data/Electronics.csv', index=False)
-print("Đã lưu xong!")
+print("Successfully saved the cleaned data!")
