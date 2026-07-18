@@ -9,10 +9,6 @@ import json
 load_dotenv()
 
 def create_rich_content_embedding(row):
-    """
-    Hàm nhận vào một NamedTuple (row từ itertuples) 
-    và trích xuất dữ liệu thông minh để tạo Embedding Vector.
-    """
     try:
         title = str(getattr(row, 'title', '')).strip()
         brand = str(getattr(row, 'brand', '')).strip()
@@ -48,10 +44,8 @@ def create_rich_content_embedding(row):
             for key, value in details.items():
                 if key == 'Best Sellers Rank' or pd.isna(value) or str(value).lower() == 'nan':
                     continue
-                    
                 if isinstance(value, dict):
                     value = ", ".join([f"{k}: {v}" for k, v in value.items()])
-                    
                 spec_sentences.append(f"{key}: {value}")
                 
             if spec_sentences:
@@ -80,43 +74,47 @@ def insert_df_pg(df):
     
     with psycopg.connect(connection_string, autocommit=True) as conn:
         with conn.cursor() as cur:
+            # Sửa câu lệnh INSERT khớp 100% với Schema của Database thực tế
             insert_query = """
-                INSERT INTO products (
-                    parent_asin, title, price, main_category, 
-                    category, image_url, store, embedding_vector
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO public.products (
+                    parent_asin, title, price, category, 
+                    image_url, description, embedding, 
+                    sold_quantity, status, stock_quantity
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (parent_asin) DO NOTHING; 
             """
             
-            print(f"Bắt đầu xử lý và nạp {len(df)} sản phẩm từ file CSV...")
+            print(f"Bắt đầu xử lý và nạp {len(df)} sản phẩm...")
             
             for row in df.itertuples(index=False):
                 parent_asin = "Unknown"
                 try:
                     parent_asin = str(row.parent_asin)
-                    
                     vector_data = create_rich_content_embedding(row)
                     
                     if vector_data is None:
-                        print(f"⚠️ Bỏ qua ASIN {parent_asin} vì không thể tạo Embedding.")
+                        print(f"⚠️ Bỏ qua ASIN {parent_asin} vì lỗi Embedding.")
                         continue
                         
-                    # 2. Làm sạch dữ liệu văn bản thô trước khi nạp
+                    # Làm sạch dữ liệu và bốc tách các trường
                     title = str(row.title) if pd.notna(row.title) else "No Title"
                     image_url = str(row.image_url) if pd.notna(row.image_url) else ""
-                    store = str(row.store) if pd.notna(row.store) else "Unknown Store"
                     price = float(row.price) if pd.notna(row.price) else 0.0
+                    category = str(row.main_category) if hasattr(row, 'main_category') and pd.notna(row.main_category) else "Electronics"
                     
-                    main_category = str(row.main_category) if hasattr(row, 'main_category') and pd.notna(row.main_category) else ""
-                    last_category = str(row.last_category) if hasattr(row, 'last_category') and pd.notna(row.last_category) else ""
+                    # Bổ sung các trường dữ liệu bị thiếu để thỏa mãn điều kiện NOT NULL của DB
+                    description = str(row.details) if hasattr(row, 'details') and pd.notna(row.details) else "No description available"
+                    sold_quantity = 0  # Giá trị mặc định ban đầu cho sản phẩm mới nạp
+                    status = "ACTIVE"  # Để trạng thái ACTIVE để hiển thị lên frontend
+                    stock_quantity = 100 # Cài số lượng kho mặc định giả lập
                     
-                    # 3. In tiến độ real-time để check xem các vector đã khác nhau về kích thước hoặc không bị treo
                     print(f"-> Processing: {title[:25]}... | ASIN: {parent_asin} | Vector Size: {len(vector_data)}")
                     
-                    # 4. Thực thi chèn dữ liệu
+                    # Thực thi chèn dữ liệu
                     cur.execute(insert_query, (
-                        parent_asin, title, price, main_category, 
-                        last_category, image_url, store, vector_data
+                        parent_asin, title, price, category, 
+                        image_url, description, vector_data, 
+                        sold_quantity, status, stock_quantity
                     ))
                     
                 except Exception as e:
@@ -124,19 +122,14 @@ def insert_df_pg(df):
                     continue
 
             print("\n--- ĐÃ CHÈN TOÀN BỘ DỮ LIỆU THÀNH CÔNG ---")
-            
-            # Khảo sát nhanh dữ liệu sau khi nạp thành công
-            print("\nKiểm tra lại dữ liệu thực tế trong Postgres:")
-            cur.execute("SELECT parent_asin, title, substring(embedding_vector::text from 1 for 40) FROM products LIMIT 3;")
-            for record in cur.fetchall():
-                print(f"ASIN: {record[0]} | Title: {record[1][:30]}... | Vector đoạn đầu: {record[2]}...")
 
 def main():
     current_dir = os.path.dirname(os.path.abspath(__file__))
+    # Đường dẫn trỏ từ Vector_DB ra ngoài content folder
     csv_path = os.path.join(current_dir, "../content/Electronics_Product(Encoding).csv")
     
     if not os.path.exists(csv_path):
-        print(f"LỖI KHÔNG TÌM THẤY FILE: Vui lòng kiểm tra lại đường dẫn: {csv_path}")
+        print(f"LỖI KHÔNG TÌM THẤY FILE: {csv_path}")
         return
         
     df = pd.read_csv(csv_path)
