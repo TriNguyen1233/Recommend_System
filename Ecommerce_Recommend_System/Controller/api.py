@@ -60,7 +60,45 @@ def recommend_item(input:recommend_input):
         if flag:
             recommend_product.append(product_dict)
     return {"recommendations":recommend_product,"products":products}
+
+# ════════════════════════════════════════════════════════════
+# INCREMENTAL LEARNING ENDPOINTS
+# ════════════════════════════════════════════════════════════
+
+@app.post("/api/v1/incremental/trigger")
+def trigger_incremental_training():
+    """
+    Kích hoạt incremental training thủ công.
+    Chạy trong background thread để không block API server.
+    """
+    import threading
+    
+    def _run_pipeline():
+        try:
+            from IncrementalPipeline.run_incremental import run_pipeline
+            run_pipeline(force=True)
+        except Exception as e:
+            print(f"[INCREMENTAL ERROR] {e}")
+    
+    thread = threading.Thread(target=_run_pipeline, daemon=True)
+    thread.start()
+    
+    return {
+        "status": "started",
+        "message": "Incremental training đã được kích hoạt trong background."
+    }
+
+@app.post("/api/v1/model/reload")
+def reload_model():
+    """
+    Reload model từ checkpoint mới nhất (sau khi incremental training hoàn tất).
+    """
+    global implement
+    try:
+        implement = implement_recommend()
+        return {"status": "success", "message": "Model đã được reload thành công."}
+    except Exception as e:
+        return {"status": "error", "message": f"Lỗi reload model: {str(e)}"}
+
 if __name__ == "__main__":
     uvicorn.run("api:app", host="127.0.0.1", port=8000, reload=True)
-
-    

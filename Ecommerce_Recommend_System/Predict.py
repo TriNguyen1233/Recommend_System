@@ -8,7 +8,8 @@ import numpy as np
 import ast
 class implement_recommend:
     def __init__(self):
-        self.Product_Rating_Data=pd.read_csv("./content/Product_Rating_Data(encoding).csv")
+        self.Product_Rating_Data=pd.read_csv("./content/Electronics_Rating(Encoding).csv")
+        self.Product_Data = pd.read_csv("./content/Electronics_Product(Encoding).csv")
         self.build_model()
         self.Electronic_Product=pd.read_csv("./content/Electronics_Product(Encoding).csv")
         self.Electronice_Rating=pd.read_csv("./content/Electronics_Rating(Encoding).csv")
@@ -110,24 +111,69 @@ class implement_recommend:
                 )
 
         # Fix 1: user_code phải là tensor 1D [1]
+      # === ĐOẠN CODE ĐÃ ĐƯỢC ĐỒNG BỘ ĐÚNG SCHEMA VÀ TRÍCH XUẤT ĐẶC TRƯNG ===
+        
+        # 1. Tìm thông tin của sản phẩm mục tiêu (target item) từ bảng Product_Data
+        current_product_info = self.Product_Data[self.Product_Data['parent_asin'] == parent_asin]
+        
+        if not current_product_info.empty:
+            # Nếu tìm thấy sản phẩm trong kho, trích xuất dữ liệu thô của chính sản phẩm đó
+            prod_row = current_product_info.iloc[0]
+            c_code = int(prod_row.get('category_code', 0))
+            m_code = int(prod_row.get('main_category_code', 0))
+            b_code = int(prod_row.get('brand_code', 0))
+            col_code = int(prod_row.get('color_code', 0))
+            st_code = int(prod_row.get('store_code', 0))
+            pa_code = int(prod_row.get('parent_asin_code', 0))
+            a_code = int(prod_row.get('asin_code', pa_code)) # fallback sang parent nếu không có asin_code
+            
+            p_scaled = float(prod_row.get('price_scaled', 0.0))
+            avg_rat = float(prod_row.get('average_rating', 0.0))
+            rat_num = float(prod_row.get('rating_number', 0.0))
+            it_avg_rat = float(prod_row.get('item_avg_rating', avg_rat))
+            p_dev = float(prod_row.get('price_deviation', 0.0))
+        else:
+            # Fallback mặc định nếu mã ASIN truyền vào test không tồn tại trong kho
+            c_code = m_code = b_code = col_code = st_code = pa_code = a_code = 0
+            p_scaled = avg_rat = rat_num = it_avg_rat = p_dev = 0.0
+
+        # 2. Khởi tạo chính xác các Tensors đầu vào cho MLP (Khớp hoàn toàn cấu trúc shape)
         user_code        = torch.tensor([user_id_encoded], dtype=torch.long)
-        asin_tensor      = torch.tensor(product_rating_df["asin_code"].values,          dtype=torch.long)
-        category_code    = torch.tensor(product_rating_df["category_code"].values,      dtype=torch.long)
-        brand_code       = torch.tensor(product_rating_df["brand_code"].values,         dtype=torch.long)
-        price_values     = torch.tensor(product_rating_df["price_scaled"].values,       dtype=torch.float32)
-        avg_rating       = torch.tensor(product_rating_df["average_rating"].values,     dtype=torch.float32)
-        rating_number    = torch.tensor(product_rating_df["rating_number"].values,      dtype=torch.float32)
-        user_rating_avg  = torch.tensor(product_rating_df["user_avg_rating"].values,    dtype=torch.float32)
-        user_rate_var    = torch.tensor(product_rating_df['user_rating_var'].values,    dtype=torch.float32)
-        main_category_code    = torch.tensor(product_rating_df["main_category_code"].values.astype(int), dtype=torch.long)
-        color_code       = torch.tensor(product_rating_df["color_code"].values,         dtype=torch.long)
-        store_code       = torch.tensor(product_rating_df["store_code"].values,         dtype=torch.long)
-        parent_asin_code = torch.tensor(product_rating_df["parent_asin_code"].values,   dtype=torch.long)
-        country_code     = torch.tensor(product_rating_df["country_code"].values,       dtype=torch.long)
-        item_avg_rating  = torch.tensor(product_rating_df['item_avg_rating'].values,    dtype=torch.float32)
-        user_brand_count = torch.tensor(product_rating_df["user_brand_count_scaled"].values, dtype=torch.float32)
-        price_deviation  = torch.tensor(product_rating_df["price_deviation"].values,    dtype=torch.float32)
-        user_recency     = torch.tensor(product_rating_df["user_recency_scaled"].values, dtype=torch.float32)
+        asin_tensor      = torch.tensor([a_code],          dtype=torch.long)
+        category_code    = torch.tensor([c_code],          dtype=torch.long)
+        brand_code       = torch.tensor([b_code],          dtype=torch.long)
+        price_values     = torch.tensor([p_scaled],        dtype=torch.float32)
+        avg_rating       = torch.tensor([avg_rat],         dtype=torch.float32)
+        rating_number    = torch.tensor([rat_num],         dtype=torch.float32)
+        item_avg_rating  = torch.tensor([it_avg_rat],      dtype=torch.float32)
+        price_deviation  = torch.tensor([p_dev],           dtype=torch.float32)
+        main_category_code = torch.tensor([m_code],        dtype=torch.long)
+        color_code       = torch.tensor([col_code],        dtype=torch.long)
+        store_code       = torch.tensor([st_code],         dtype=torch.long)
+        parent_asin_code = torch.tensor([pa_code],         dtype=torch.long)
+        
+        # Các trường thông tin cố định hoặc lấy từ hồ sơ người dùng (User Profile)
+        country_code     = torch.tensor([0],               dtype=torch.long) # Mặc định quốc gia đầu tiên
+        
+        # Trích xuất thông tin hành vi người dùng (nếu có trong dữ liệu rating, ngược lại để mặc định cho user mới)
+        user_history = product_rating_df[product_rating_df['user_id'] == user_id]
+        if not user_history.empty:
+            u_avg = float(user_history['user_avg_rating'].values[0])
+            u_var = float(user_history['user_rating_var'].values[0])
+            u_rec = float(user_history['user_recency_scaled'].values[0])
+            u_brnd = float(user_history.get('user_brand_count_scaled', [0.0]).values[0])
+        else:
+            u_avg = 4.0 # Trung bình mặc định của hệ thống
+            u_var = 0.5
+            u_rec = 0.0
+            u_brnd = 0.0
+
+        user_rating_avg  = torch.tensor([u_avg],           dtype=torch.float32)
+        user_rate_var    = torch.tensor([u_var],           dtype=torch.float32)
+        user_recency     = torch.tensor([u_rec],           dtype=torch.float32)
+        user_brand_count = torch.tensor([u_brnd],          dtype=torch.float32)
+        
+        # === KẾT THÚC ĐOẠN SỬA ===
 
         # Clamp index trong range checkpoint
         user_code        = user_code.clamp(0, checkpoint['num_users'] - 1)
@@ -141,23 +187,58 @@ class implement_recommend:
         # country_code     = country_code.clamp(0, checkpoint['num_countries'] - 1)
 
         # History
-        cleaned_history = product_rating_df["history_list"].apply(
-            lambda x: ast.literal_eval(x) if isinstance(x, str) else x
-        ).tolist()
-        cleaned_history_brand = product_rating_df["history_brand_list"].apply(
-            lambda x: ast.literal_eval(x) if isinstance(x, str) else x
-        ).tolist()
-        cleaned_history_cat = product_rating_df["history_cat_list"].apply(
-            lambda x: ast.literal_eval(x) if isinstance(x, str) else x
-        ).tolist()
+      # === ĐOẠN SỬA LỖI KEYERROR VÀ ZERO-PADDING CHO CHUỖI LỊCH SỬ GRU ===
+        
+        # 1. Khởi tạo chuỗi rỗng mặc định cho cả 3 danh mục lịch sử
+        recent_history_item = []
+        recent_history_brand = []
+        recent_history_cat = []
 
-        history       = torch.tensor(cleaned_history,       dtype=torch.long).clamp(0, checkpoint['num_items'] - 1)
-        history_brand = torch.tensor(cleaned_history_brand, dtype=torch.long).clamp(0, checkpoint['num_brands'] - 1)
-        history_cat   = torch.tensor(cleaned_history_cat,   dtype=torch.long).clamp(0, checkpoint['num_categories'] - 1)
+        # 2. Kiểm tra nếu có dữ liệu lịch sử trong DataFrame (Ưu tiên nếu là User cũ có tương tác)
+        user_history_rows = product_rating_df[product_rating_df['user_id'] == user_id]
+        
+        if not user_history_rows.empty:
+            row_idx = user_history_rows.index[0]
+            
+            # Xử lý bóc tách chuỗi sản phẩm đã xem
+            if "history_list" in product_rating_df.columns:
+                raw_h = product_rating_df.at[row_idx, "history_list"]
+                recent_history_item = ast.literal_eval(raw_h) if isinstance(raw_h, str) else ([] if pd.isna(raw_h) else raw_h)
+            
+            # Xử lý bóc tách chuỗi thương hiệu đã xem
+            if "history_brand_list" in product_rating_df.columns:
+                raw_b = product_rating_df.at[row_idx, "history_brand_list"]
+                recent_history_brand = ast.literal_eval(raw_b) if isinstance(raw_b, str) else ([] if pd.isna(raw_b) else raw_b)
+                
+            # Xử lý bóc tách chuỗi danh mục đã xem
+            if "history_cat_list" in product_rating_df.columns:
+                raw_c = product_rating_df.at[row_idx, "history_cat_list"]
+                recent_history_cat = ast.literal_eval(raw_c) if isinstance(raw_c, str) else ([] if pd.isna(raw_c) else raw_c)
 
+        # 3. Kỹ thuật Zero-Padding: Ép buộc độ dài chuỗi luôn bằng 10 để nạp vào GRU
+        max_seq_len = 10
+        
+        def pad_sequence(seq):
+            if not isinstance(seq, list):
+                seq = []
+            if len(seq) < max_seq_len:
+                return [0] * (max_seq_len - len(seq)) + seq
+            return seq[-max_seq_len:]
+
+        padded_item  = pad_sequence(recent_history_item)
+        padded_brand = pad_sequence(recent_history_brand)
+        padded_cat   = pad_sequence(recent_history_cat)
+
+        # 4. Chuyển đổi thành Tensor 2D [1, 10] khớp hoàn toàn với shape của Model suy luận và Giới hạn biên (Clamp)
+        history       = torch.tensor([padded_item],  dtype=torch.long).clamp(0, checkpoint.get('num_items', 100000) - 1)
+        history_brand = torch.tensor([padded_brand], dtype=torch.long).clamp(0, checkpoint.get('num_brands', 100000) - 1)
+        history_cat   = torch.tensor([padded_cat],   dtype=torch.long).clamp(0, checkpoint.get('num_categories', 100000) - 1)
+
+        # 5. Kích hoạt chế độ đánh giá mô hình và cập nhật không gian GCN nhúng
         self.model.eval()
         self.model.update_gcn_embeddings()
 
+        # 6. Tiến hành đưa toàn bộ đặc trưng vào mạng Nơ-ron suy luận song song
         with torch.no_grad():
             logit = self.model(
                 user_code, asin_tensor, history,
@@ -171,9 +252,12 @@ class implement_recommend:
                 history_cat_ids=history_cat,
             ).squeeze(-1)
 
-        # Fix 3: sigmoid trước khi quyết định
+        # 7. Tính toán xác suất bằng hàm Sigmoid kích hoạt
         prob = torch.sigmoid(logit).item()
-        print(f"Probability: {prob:.4f}")
+        print(f"\n=========================================")
+        print(f" Kết quả dự đoán cho User '{user_id}' và Sản phẩm '{parent_asin}':")
+        print(f" Xác suất tương tác (Probability): {prob:.4f}")
+        print(f"=========================================\n")
 
         if prob >= 0.5:
             return True
@@ -183,4 +267,4 @@ class implement_recommend:
 
 if __name__=="__main__":
     implement=implement_recommend()
-    implement.predict(user_id='a',parent_asin='B01A0MTS3W')
+    implement.predict(user_id='a', parent_asin='B01A0MTS3W')
