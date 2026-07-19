@@ -1,0 +1,39 @@
+/* Container bọc ngoài để căn giữa spinner (nếu cần) */
+.neon-spinner-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px;
+    background-color: #0b0b1a; /* Màu nền tối giúp hiệu ứng neon nổi bật hơn */
+}
+
+/* Khối Spinner chính */
+.neon-spinner {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    
+    /* Tạo viền mờ toàn bộ và một viền màu neon nổi bật */
+    border: 4px solid rgba(0, 242, 254, 0.1);
+    border-top: 4px solid #00f2fe; 
+    border-right: 4px solid #00f2fe; /* Giúp vòng cung neon dài ra một chút */
+
+    /* Tạo hiệu ứng phát sáng (Neon Glow) */
+    box-shadow: 0 0 10px #00f2fe,
+                0 0 20px rgba(0, 242, 254, 0.5),
+                inset 0 0 10px rgba(0, 242, 254, 0.3);
+
+    /* Kích hoạt hiệu ứng xoay vô hạn */
+    animation: neon-spin 1s linear infinite;
+}
+
+@keyframes neon-spin {
+    0% {
+        transform: rotate(0deg);
+        filter: hue-rotate(0deg); 
+    }
+    100% {
+        transform: rotate(360deg);
+        filter: hue-rotate(360deg); /* Vòng xoay sẽ tự động đổi màu liên tục cầu vồng */
+    }
+}

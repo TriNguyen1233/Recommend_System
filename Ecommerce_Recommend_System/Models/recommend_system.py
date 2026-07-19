@@ -167,6 +167,91 @@ class Neural_Network(nn.Module):
         nn.init.zeros_(self.user_bias.weight)
         nn.init.zeros_(self.item_bias.weight)
 
+    # ════════════════════════════════════════════════════════════
+    # INCREMENTAL LEARNING: Expandable Embeddings & Graph Update
+    # ════════════════════════════════════════════════════════════
+
+    def expand_embedding(self, attr_name: str, new_num: int):
+        """
+        Mở rộng bảng Embedding khi xuất hiện user/item/brand mới.
+        Giữ nguyên toàn bộ trọng số đã học, chỉ thêm hàng mới với khởi tạo nhỏ.
+        """
+        old_emb = getattr(self, attr_name)
+        if new_num <= old_emb.num_embeddings:
+            return  # Không cần mở rộng
+        device = old_emb.weight.device
+        new_emb = nn.Embedding(new_num, old_emb.embedding_dim).to(device)
+        nn.init.normal_(new_emb.weight, mean=0.0, std=0.01)
+        with torch.no_grad():
+            new_emb.weight[:old_emb.num_embeddings] = old_emb.weight
+        setattr(self, attr_name, new_emb)
+        print(f"[INCREMENTAL] Expanded {attr_name}: {old_emb.num_embeddings} → {new_num}")
+
+    def expand_vocabularies(self, new_vocab_sizes: dict):
+        """
+        Mở rộng tất cả các bảng embedding theo vocab sizes mới.
+        
+        Args:
+            new_vocab_sizes: dict với keys tương ứng checkpoint keys, ví dụ:
+                {
+                    'num_users': 15000,
+                    'num_items': 8000,
+                    'num_brands': 500,
+                    ...
+                }
+        """
+        mapping = {
+            'num_users':        ('user_embedding', 'user_bias'),
+            'num_items':        ('item_embedding', 'item_bias'),
+            'num_brands':       ('brand_embedding',),
+            'num_categories':   ('category_emb',),
+            'num_main_cats':    ('main_category_emb',),
+            'num_colors':       ('color_embedding',),
+            'num_stores':       ('store_embedding',),
+            'num_parent_asins': ('parent_asin_embedding',),
+            'num_countries':    ('country_embedding',),
+        }
+        for key, attr_names in mapping.items():
+            if key in new_vocab_sizes:
+                for attr_name in attr_names:
+                    self.expand_embedding(attr_name, new_vocab_sizes[key])
+        # Cập nhật GCN LayerNorm nếu cần (kích thước không đổi vì dim embedding cố định)
+
+    def update_graph(self, new_edge_index, new_edge_weight):
+        """
+        Thêm cạnh mới vào đồ thị GCN mà không cần xây lại toàn bộ.
+        Tự động loại bỏ cạnh trùng lặp (giữ trọng số lớn nhất).
+        
+        Args:
+            new_edge_index:  [2, num_new_edges] tensor
+            new_edge_weight: [num_new_edges] tensor
+        """
+        device = self.edge_index.device
+        new_edge_index = new_edge_index.to(device)
+        new_edge_weight = new_edge_weight.to(device)
+
+        # Ghép cạnh cũ + mới
+        combined_ei = torch.cat([self.edge_index, new_edge_index], dim=1)
+        combined_ew = torch.cat([self.edge_weight, new_edge_weight], dim=0)
+
+        # Loại bỏ cạnh trùng lặp: chuyển (src, dst) thành key duy nhất
+        num_nodes = combined_ei.max().item() + 1
+        edge_keys = combined_ei[0] * num_nodes + combined_ei[1]
+
+        # Sắp xếp theo key, giữ trọng số lớn nhất cho mỗi cạnh trùng
+        unique_keys, inverse = torch.unique(edge_keys, return_inverse=True)
+        max_weights = torch.zeros(unique_keys.shape[0], device=device)
+        max_weights.scatter_reduce_(0, inverse, combined_ew, reduce='amax', include_self=False)
+
+        # Khôi phục edge_index từ keys
+        deduped_src = unique_keys // num_nodes
+        deduped_dst = unique_keys % num_nodes
+        deduped_ei = torch.stack([deduped_src, deduped_dst], dim=0).long()
+
+        self.register_buffer("edge_index", deduped_ei)
+        self.register_buffer("edge_weight", max_weights)
+        print(f"[INCREMENTAL] Graph updated: {combined_ei.shape[1]} edges → {deduped_ei.shape[1]} (after dedup)")
+
     # ── FIX 2: GCN với gradient + LayerNorm ─────────────────
     def _compute_gcn(self):
         """Chạy LGConv với gradient flow đầy đủ."""
