@@ -2,6 +2,7 @@ package com.example.ecommerce.controller;
 
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -13,13 +14,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.ecommerce.dto.UserRequest;
-import com.example.ecommerce.dto.UserResponse;
 import com.example.ecommerce.entity.User;
 import com.example.ecommerce.enums.UserStatus;
 import com.example.ecommerce.mapper.UserMapper;
+import com.example.ecommerce.request.UserRequest;
+import com.example.ecommerce.response.UserResponse;
 import com.example.ecommerce.service.AdminService;
-import com.example.ecommerce.service.UserService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -28,8 +28,9 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/admin/users")
 @RequiredArgsConstructor
 public class AdminController {
-    private final UserService userService;
+    @Autowired
     private final UserMapper userMapper;
+    @Autowired
     private final AdminService adminService;
 
     @GetMapping

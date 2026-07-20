@@ -28,28 +28,24 @@ public class Review {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "review_id") // Nên đặt tên cột rõ ràng trong DB
     private Integer id;
 
-    // SỬA LỖI: Dùng @ManyToOne cho thực thể Product thay vì @Column
-    // Thêm @NotNull để đảm bảo review phải thuộc về một sản phẩm nào đó
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "asin", referencedColumnName = "parent_asin", nullable = false)
-    @NotNull(message = "Sản phẩm đánh giá không được để trống")
+    @NotNull(message = "Product reference is required")
     private Product product;
 
-    // SỬA LỖI: Bỏ @JoinColumn ở đây vì userId chỉ là một String thuần túy, không phải một Entity mối quan hệ
     @Column(name = "user_id", nullable = false)
-    @NotBlank(message = "ID người dùng không được để trống")
+    @NotBlank(message = "User ID cannot be blank")
     private String userId;
 
-    // Thêm CONSTRAINT: Rating thường nằm trong khoảng từ 1 đến 5 sao
     @Column(name = "rating", nullable = false)
-    @Min(value = 1, message = "1 star is the minimum rating")
-    @Max(value = 5, message = "5 star is the maximum rating")
+    @Min(value = 1, message = "Rating must be at least 1 star")
+    @Max(value = 5, message = "Rating cannot exceed 5 stars")
     private int rating;
 
-    // Thêm CONSTRAINT: Nội dung đánh giá không được trống và giới hạn độ dài ký tự
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
-    @NotBlank(message = "description can't be blank")
+    @NotBlank(message = "Review content cannot be blank") // Sửa từ description thành content
     private String content;
 }
