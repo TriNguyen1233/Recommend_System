@@ -32,7 +32,7 @@ function LoginPage() {
             localStorage.setItem("user", JSON.stringify(data));
             localStorage.setItem("item", data['id']);
             localStorage.setItem("jwtToken", data['token']);
-            
+
             toast.success('Login success! 🎉');
             navigate("/homepage"); // Added redirection to homepage on form login success
         }).catch((error) => {
@@ -46,24 +46,29 @@ function LoginPage() {
         });
     };
 
-    // Verify token with backend for social logins
     const handleFirebaseLoginOnBackend = async (idToken: string, provider: string) => {
         try {
             const response = await axios.post('http://localhost:8080/api/auth/firebase-login', {
                 token: idToken
             });
 
-            const { mySystemToken, user } = response.data || {};
+            console.log("Backend response:", response.data); 
 
-            if (mySystemToken) {
-                // Synchronize local storage data keys
+            const token = response.data.mySystemToken || response.data.token || response.data.jwtToken || response.data.accessToken;
+            const user = response.data.user || response.data;
+
+            if (token) {
                 localStorage.setItem("user", JSON.stringify(user));
-                localStorage.setItem("item", user.id || user.uid);
-                localStorage.setItem("jwtToken", mySystemToken); 
+                localStorage.setItem("item", user.id || user.uid || "");
+                localStorage.setItem("jwtToken", token);
 
-                console.log(`${provider} authentication successful!`, user);
-                toast.success('Login success! 🎉');
-                navigate("/homepage");
+                toast.success(`${provider} login successful! 🎉`);
+
+                setTimeout(() => {
+                    navigate("/homepage");
+                }, 500);
+            } else {
+                toast.error("Authentication failed: No token received from server!");
             }
         } catch (error: any) {
             console.error(`Error sending ${provider} token to backend:`, error);
@@ -95,7 +100,7 @@ function LoginPage() {
             const result = await signInWithPopup(auth, googleProvider);
             const idToken = await result.user.getIdToken();
             console.log("Firebase Google Token:", idToken);
-            
+
             await handleFirebaseLoginOnBackend(idToken, "Google");
         } catch (error: any) {
             console.error("Firebase Google error:", error);

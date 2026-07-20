@@ -1,21 +1,22 @@
 package com.example.ecommerce.service;
 
-import org.springframework.stereotype.Service;
+import java.util.List;
 
-import com.example.ecommerce.entity.Product;
-import com.example.ecommerce.repository.ProductRepository;
+import com.example.ecommerce.request.ProductRequest;
+import com.example.ecommerce.response.ProductResponse;
 
-@Service
-public class ProductService {
+public interface ProductService {
 
-    private final ProductRepository productRepository;
+    ProductResponse getProductByAsin(String asin);
 
-    public ProductService(ProductRepository productRepository) {
-        this.productRepository = productRepository;
-    }
+    List<ProductResponse> getAllProducts(int page, int size);
 
-    public Product getProductByAsin(String asin) {
-        return productRepository.findByAsin(asin);
-    }
+    ProductResponse createProduct(ProductRequest productRequest);
+
+    ProductResponse updateProduct(String asin, ProductRequest productRequest);
+
+    ProductResponse changeProductQuantity(String asin, int quantity);
+
+    void deleteProduct(String asin);
 
 }
