@@ -1,0 +1,110 @@
+/* App.css */
+@import "tailwindcss";
+/* Reset toàn bộ trang */
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  /* Ngăn chặn thanh cuộn nếu bạn làm trang full-screen */
+  background-color: #ffffff; /* Màu nền trắng */
+}
+
+/* Container chứa Canvas của bạn */
+.canvas-container {
+  width: 100vw;   /* 100% chiều rộng màn hình */
+  height: 100vh;  /* 100% chiều cao màn hình */
+  background-color: #ffffff; /* Màu nền tối để model nổi bật hơn */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.navbar{
+  padding-top: 10px;
+  width: 100%;
+  height: 60px;
+  background-color: rgb(255, 255, 255); /* Màu nền trắng với độ trong suốt */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 10; /* Đảm bảo navbar nằm trên Canvas */
+}
+.logo{
+  margin-left: 50px;
+  color: aqua;
+  font-size: 1.5em;
+}
+.navheader{
+  color:#333333;
+  display:flex;
+  gap: 20px;
+}
+.loginbutton{
+  color:#FFFFFF;
+  background-color: #0EA5E9;
+  padding:5px 30px;
+  border-radius: 30%;
+  margin-right: 100px;
+}
+.herobar{
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+}
+.herotext{
+  width: 50%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-left: 50px;
+  background-color: #FFFFFF;
+  text-overflow: break-word;
+  font-size: 90px;
+  font-weight: 800;
+  line-height: 1.2;
+  padding-left: 200px;
+}
+
+.char{
+  display:flex
+}
+.style-text {
+  display: flex;       /* Dùng Flexbox để các chữ nằm ngang */
+  flex-wrap: nowrap;   /* Ép các chữ cái không được nhảy xuống hàng */
+  white-space: nowrap; /* Đảm bảo văn bản không bị ngắt */
+  justify-content: center; /* Căn giữa dòng chữ nếu cần */
+  flex-direction: column;
+  width: 100%;
+}
+.discountbox{
+  width: 100%;
+  height: 400px;
+} 
+.category-section{
+  width: 100%;
+  padding: 50px;
+  
+  background-color: #f5f5f5;
+}
+
+.neon-spinner-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+}
+
+.neon-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(13, 110, 253, 0.1);
+  border-left-color: #0d6efd; /* Màu xanh chủ đạo */
+  border-radius: 50%;
+  animation: spin-neon 0.8s cubic-bezier(0.5, 0.1, 0.4, 0.9) infinite;
+}
+
+@keyframes spin-neon {
+  to { transform: rotate(360deg); }
+}

@@ -1,0 +1,31 @@
+.category-tab {
+    color: black;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 50%;
+    width: 70px;
+    height: 70px;
+    flex-direction: column;
+}
+.category-tab svg {
+    width: 30px;
+    height: 30px;
+}
+.category-text {
+    margin-top: 2px;
+    font-weight: bold;
+    font-size: 10px;
+}
+.category-tab:hover {
+    background-color: #f0f0f0;
+    cursor: pointer;
+}
+.category-tabs {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-top: 20px;
+}
