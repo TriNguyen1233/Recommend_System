@@ -1,7 +1,5 @@
 package com.example.ecommerce.repository;
 
-import java.util.List;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -21,18 +19,13 @@ public interface ProductRepository extends JpaRepository<Product, String> {
                 parent_asin AS parentAsin,
                 title,
                 price,
-                main_category AS mainCategory,
                 category,
                 image_url AS imageUrl,
-                store,
-                (1 - (embedding_vector <=> CAST(:vectorString AS vector))) AS cosineSimilarity
+                (1 - (embedding <=> CAST(:vectorString AS vector))) AS cosineSimilarity
             FROM products
-            WHERE main_category = :mainCategory
-            ORDER BY embedding_vector <=> CAST(:vectorString AS vector) ASC
-            LIMIT :limit
-            """, nativeQuery = true)
-    List<ProductVectorProjection> findSimilarProducts(
+            ORDER BY embedding <=> CAST(:vectorString AS vector) ASC
+            """, countQuery = "SELECT COUNT(*) FROM products", nativeQuery = true)
+    Page<ProductVectorProjection> findSimilarProducts(
             @Param("vectorString") String vectorString,
-            @Param("mainCategory") String mainCategory,
-            @Param("limit") int limit);
+            Pageable pageable);
 }

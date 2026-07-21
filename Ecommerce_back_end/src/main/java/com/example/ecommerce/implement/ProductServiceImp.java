@@ -2,8 +2,8 @@ package com.example.ecommerce.implement;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
+import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -27,6 +27,7 @@ public class ProductServiceImp implements ProductService {
     private final ProductRepository productRepository;
     @Autowired
     private final ProductMapper productMapper;
+    private final EmbeddingModel embeddingModel;
 
     @Override
     public ProductResponse getProductByAsin(String asin) {
@@ -36,13 +37,19 @@ public class ProductServiceImp implements ProductService {
     }
 
     @Override
-    public List<ProductResponse> getAllProducts(int page, int size) {
+    public List<ProductResponse> getAllProducts(int page, int size, String category) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<Product> productPage = productRepository.findAll(pageable);
-        List<Product> products = productPage.getContent();
-        return products.stream()
+        Page<Product> productPage;
+
+        if (category != null && !category.trim().isEmpty()) {
+            productPage = productRepository.findByCategory(category, pageable);
+        } else {
+            productPage = productRepository.findAll(pageable);
+        }
+
+        return productPage.getContent().stream()
                 .map(productMapper::toProductResponse)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
@@ -104,9 +111,22 @@ public class ProductServiceImp implements ProductService {
         productRepository.delete(product);
     }
 
-    public List<ProductVectorProjection> getSimilarProducts(float[] embeddingArray, String category, int limit) {
-        String vectorString = Arrays.toString(embeddingArray);
+    @Override
+    public Page<ProductResponse> semanticSearch(String search, int page, int size) {
+        float[] vectorArray = embeddingModel.embed(search);
+        String vectorString = Arrays.toString(vectorArray);
 
-        return productRepository.findSimilarProducts(vectorString, category, limit);
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<ProductVectorProjection> projections = productRepository.findSimilarProducts(vectorString, pageable);
+
+        return projections.map(p -> ProductResponse.builder()
+                .asin(p.getParentAsin())
+                .title(p.getTitle())
+                .price(p.getPrice() != null ? p.getPrice().floatValue() : 0f) 
+                .image(p.getImageUrl())
+                .category(p.getCategory())
+                .build());
     }
+
 }
