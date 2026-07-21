@@ -19,6 +19,7 @@ Trước khi chạy dự án, hãy đảm bảo máy tính của bạn đã đư
      ollama pull nomic-embed-text
      ```
 5. **PostgreSQL**:
+   Tải PostgreSQL (https://www.enterprisedb.com/downloads/postgres-postgresql-downloads)
    * Khởi chạy PostgreSQL Server (mặc định cổng `5432`).
    * Tạo 2 cơ sở dữ liệu (Database) trống:
      * `Recommend_DB` (Dành cho Spring Boot).
