@@ -1,9 +1,13 @@
 package com.example.ecommerce.entity;
 
-// Import các class mới từ package java.time
-import java.time.LocalDateTime;
+import java.time.LocalDateTime; // Sử dụng LocalDate thay cho java.util.Date
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import com.example.ecommerce.enums.Gender;
 import com.example.ecommerce.enums.UserRole;
@@ -20,6 +24,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -33,55 +38,70 @@ import lombok.ToString;
 @NoArgsConstructor
 @Getter
 @Setter
-@ToString
-public class User {
+@ToString(exclude = "password")
+public class User implements UserDetails{
 
     @Id
     @Column(name = "user_id")
-    private String Id;
+    @NotBlank(message = "User ID cannot be blank")
+    private String id;
 
-    @Column(name = "username", nullable = true, unique = true)
+    @Column(name = "username", unique = true)
     private String username;
 
     @Column(name = "password", nullable = false)
+    @NotBlank(message = "Password cannot be blank")
     private String password;
 
-    @Email(message = "email is invalid")
-    @NotBlank(message = "email can't be blank")
-    @Column(nullable = false, unique = true)
+    @Email(message = "Email is invalid")
+    @NotBlank(message = "Email cannot be blank")
+    @Column(name = "email", nullable = false, unique = true)
     private String email;
 
-    @Pattern(regexp = "^\\+?[0-9]{9,15}$", message = "invalid phone")
-    @Column(name = "phone_number", nullable = true, unique = true)
+    @Pattern(regexp = "^\\+?[0-9]{9,15}$", message = "Phone number is invalid")
+    @Column(name = "phone_number", unique = true)
     private String phoneNumber;
 
-    @Column(name = "full_name",nullable = false)
+    @Column(name = "full_name", nullable = false)
+    @NotBlank(message = "Full name cannot be blank")
     private String fullName;
 
-    // Thay thế Date bằng LocalDate: Tự động map thành kiểu DATE trong DB
-    @Column(name = "date_of_birth", nullable = true)
+    @Column(name = "date_of_birth") 
     private Date dateOfBirth;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "gender")
     private Gender gender;
 
+    @Column(name = "avatar")
     private String avatar;
 
     @Enumerated(EnumType.STRING)
-    private UserStatus status;
+    @Column(name = "status", nullable = false)
+    @NotNull(message = "User status is required")
+    private UserStatus status = UserStatus.ACTIVE;
 
     @Enumerated(EnumType.STRING)
-    private UserRole role;
+    @Column(name = "role", nullable = false)
+    @NotNull(message = "User role is required")
+    private UserRole role = UserRole.USER;
 
-    @Column(name = "postal_code", nullable = true)
+    @Column(name = "postal_code")
     private String postalCode;
 
     @Column(name = "created_at", updatable = false, nullable = false)
+    @NotNull(message = "Creation time cannot be null")
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false)
+    @NotNull(message = "Update time cannot be null")
     private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Cart> carts; // Thêm danh sách giỏ hàng của người dùng
+    private List<Cart> carts = new ArrayList<>();
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of();
+    }
 }

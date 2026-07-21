@@ -1,7 +1,5 @@
 package com.example.ecommerce.dto;
 
-import java.math.BigDecimal;
-
 import com.example.ecommerce.enums.ProductStatus;
 
 import lombok.AllArgsConstructor;
@@ -17,7 +15,7 @@ public class ProductResponse {
     private String asin;
     private String title;
     private String description;
-    private BigDecimal price;
+    private float price;
     private String image;
     private ProductStatus status;
     private String category;

@@ -1,6 +1,6 @@
 package com.example.ecommerce.entity;
 
-import java.math.BigDecimal; // Import BigDecimal cho giá tiền
+import java.util.ArrayList;
 import java.util.List;
 
 import com.example.ecommerce.enums.ProductStatus;
@@ -15,13 +15,16 @@ import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "products") // Đặt tên bảng rõ ràng
+@Table(name = "products")
 @Getter
 @Setter
 @AllArgsConstructor
@@ -29,38 +32,46 @@ import lombok.Setter;
 public class Product {
 
     @Id
-    @Column(name = "parent_asin", length = 20) // Mã ASIN của Amazon thường cố định độ dài ngắn
+    @Column(name = "parent_asin", length = 20)
+    @NotBlank(message = "ASIN cannot be blank")
+    @Size(max = 20, message = "ASIN length must not exceed 20 characters")
     private String asin;
 
-    @NotBlank(message = "title can't be blank")
-    @Column(name = "title", nullable = false, length = 500) // Tên sản phẩm Amazon thường khá dài
+    @NotBlank(message = "Title cannot be blank")
+    @Column(name = "title", nullable = false, length = 500)
     private String title;
 
-    @NotBlank(message = "description can't be blank")
-    @Column(name = "description", columnDefinition = "TEXT") // Ép kiểu thành TEXT trong DB để chứa chuỗi siêu dài
+    @NotBlank(message = "Description cannot be blank")
+    @Column(name = "description", columnDefinition = "TEXT", nullable = false)
     private String description;
 
-    @Column(nullable = false)
-    private BigDecimal price; // Đổi sang BigDecimal để tính toán tiền nong chính xác không bị lệch xu nào
+    // Sử dụng float theo nhu cầu của bạn, đi kèm validation không âm
+    @Column(name = "price", nullable = false)
+    @PositiveOrZero(message = "Price must be greater than or equal to 0")
+    private float price; 
 
-    @Column(name = "image_url") // Lưu link ảnh
+    @Column(name = "image_url") // Mặc định nullable = true
     private String image;
 
     @Column(name = "stock_quantity", nullable = false)
-    private int stockQuantity = 0; // Gán mặc định bằng 0 cho an toàn
+    @PositiveOrZero(message = "Stock quantity cannot be negative")
+    private int stockQuantity = 0;
 
     @Column(name = "sold_quantity", nullable = false)
+    @PositiveOrZero(message = "Sold quantity cannot be negative")
     private int soldQuantity = 0;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private ProductStatus status;
+    @Column(name = "status", nullable = false)
+    @NotNull(message = "Product status is required")
+    private ProductStatus status = ProductStatus.ACTIVE; // Thêm trạng thái mặc định nếu cần
 
-    @Column(name="category")
+    @Column(name = "category") // Mặc định nullable = true
     private String category;
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Review> reviews;
-    @Column(name = "embedding", columnDefinition = "float[]") // Lưu mảng float vào cột embedding
+    private List<Review> reviews = new ArrayList<>(); // Khởi tạo sẵn tránh NullPointerException
+
+    @Column(name = "embedding", columnDefinition = "float[]") // Mặc định nullable = true
     private float[] embedding;
 }

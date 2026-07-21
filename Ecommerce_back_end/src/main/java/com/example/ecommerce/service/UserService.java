@@ -1,70 +1,39 @@
 package com.example.ecommerce.service;
 
-import java.time.LocalDateTime;
-import java.util.Date;
-import java.util.UUID;
-
-import org.apache.commons.codec.binary.Base32;
-import org.apache.kafka.common.errors.ResourceNotFoundException;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
+import org.springframework.security.core.Authentication;
 
 import com.example.ecommerce.entity.User;
-import com.example.ecommerce.enums.UserRole;
-import com.example.ecommerce.repository.UserRepository;
+import com.example.ecommerce.request.LoginRequest;
+import com.example.ecommerce.request.SignupRequest;
+import com.example.ecommerce.response.UserResponse;
 
-@Service
-public class UserService {
-    @Autowired
-    private UserRepository userRepository;
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-    private final Base32 base32 = new Base32();
+public interface UserService {
 
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
-    }
+    /**
+     * Kiểm tra xem người dùng có phải là Admin hay không dựa trên userId.
+     */
+    boolean isAdmin(String userId);
 
-    public boolean isAdmin(String userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException(("User not found with id: " + userId)));
-        if (user.getRole() == UserRole.ADMIN) {
-            return true;
-        }
-        return false;
-    }
+    /**
+     * Xác thực thông tin đăng nhập của người dùng.
+     * 
+     * @param loginRequest DTO chứa email và password
+     * @return UserResponse chứa thông tin user an toàn (không kèm mật khẩu)
+     */
+    UserResponse login(LoginRequest loginRequest);
 
-    public User login(String email, String password) {
-        User user = userRepository.findByEmail(email).orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found with email: " + email));
-        if (!passwordEncoder.matches(password, user.getPassword())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Email hoặc mật khẩu không chính xác.");
-        }
+    /**
+     * Đăng ký tài khoản người dùng mới vào hệ thống.
+     * 
+     * @param signupRequest DTO chứa đầy đủ thông tin đăng ký từ client
+     * @return true nếu đăng ký thành công
+     */
+    boolean signup(SignupRequest signupRequest);
 
-        return user;
-    }
+    /**
+     * Yêu cầu khôi phục mật khẩu qua Email.
+     */
+    boolean forgetPassword(String email);
 
-    public boolean signup(String email, String fullName, String phoneNumber, Date dateOfBirth, String password) {
-        if (userRepository.existsByEmail(email)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email is already in use.");
-        }
-        String encodedPassword = passwordEncoder.encode(password);
-        User newUser = new User();
-        String userId = base32.encodeToString(UUID.randomUUID().toString().getBytes());
-        newUser.setId(userId);
-        newUser.setPassword(encodedPassword);
-        newUser.setEmail(email);
-        newUser.setRole(UserRole.USER);
-        newUser.setCreatedAt(LocalDateTime.now());
-        newUser.setUpdatedAt(LocalDateTime.now());
-        newUser.setFullName(fullName);
-        newUser.setPhoneNumber(phoneNumber);
-        newUser.setDateOfBirth(dateOfBirth);
-        userRepository.save(newUser);
-        return true;
-    }
+    User processFirebaseUser(String uid, String email, String name, String picture);
 }

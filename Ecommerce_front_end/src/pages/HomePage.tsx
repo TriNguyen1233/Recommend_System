@@ -10,13 +10,16 @@ import { NavLink } from 'react-router-dom';
 import CategoryTabs from "../components/CategoryTabs.tsx"
 import axios from 'axios'
 import ProductCard from '../components/ProductCard.tsx'
+import Header from '../components/Header.tsx';
+import { productSeeds, aiRecommendationSeeds } from '../data/dataSeeds.ts'
+import ProductList from '../components/Productlist.tsx';
 interface Product {
     parent_asin: string;
     title: string;
     price: number | string;
     main_category: string;
     category: string;
-    image_url: string; // Đổi từ product.image sang product.image_url
+    image_url: string;
     store: string;
 }
 
@@ -29,9 +32,10 @@ function MainPage() {
     const container = useRef<HTMLDivElement | null>(null);
     const userIdRef = useRef<HTMLInputElement | null>(null);
     const searchTextRef = useRef<HTMLTextAreaElement | null>(null);
+    const addCartRef = useRef<HTMLDivElement | null>(null);
     // --- Trạng thái mảng dữ liệu rỗng (Sẵn sàng chờ Quang đổ data thật) ---
-    const [products, setProducts] = useState<Product[]>([]);
-    const [aiRecs, setAiRecs] = useState<Product[]>([]);
+    const [products, setProducts] = useState<Product[]>(productSeeds);
+    const [aiRecs, setAiRecs] = useState<Product[]>(aiRecommendationSeeds);
     const [modal, setModal] = useState(false);
     const [loading, setLoading] = useState<boolean>(false);
     const search = async () => {
@@ -81,51 +85,8 @@ function MainPage() {
     }, { scope: container });
 
     return (
-        <div style={{ backgroundColor: '#f8f9fa', color: '#212529', minHeight: '100vh', fontFamily: 'sans-serif' }}>
-
-            {/* 1. NAVBAR (Tông màu sáng) */}
-            <div className="navbar" style={{ backgroundColor: '#ffffff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div className='logo' style={{ color: '#0d6efd', fontWeight: 'bold', fontSize: '20px' }}>TechStore</div>
-                <div className='navheader' style={{ display: 'flex', gap: '20px' }}>
-                    <div>
-                        <NavLink to="/" style={{ color: '#495057', textDecoration: 'none' }}>Home</NavLink>
-                        <NavLink to="/products" style={{ color: '#495057', textDecoration: 'none' }}>Products</NavLink>
-                        <NavLink to="/specifications" style={{ color: '#495057', textDecoration: 'none' }}>Specifications</NavLink>
-                        <NavLink to="/contact" style={{ color: '#495057', textDecoration: 'none' }}>About Us</NavLink>
-                    </div>
-
-                </div>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                    <button style={{
-                        backgroundColor: 'transparent',
-                        color: '#0d6efd',
-                        border: '1px solid #0d6efd',
-                        padding: '8px 16px',
-                        borderRadius: '6px',
-                        fontWeight: '500',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
-                    }}>
-                        Login
-                    </button>
-
-                    <button style={{
-                        backgroundColor: '#0d6efd',
-                        color: '#ffffff',
-                        border: 'none',
-                        padding: '8px 16px',
-                        borderRadius: '6px',
-                        fontWeight: '500',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
-                    }}>
-                        Sign Up
-                    </button>
-                    {/* // bottom sign up button */}
-                </div>
-
-            </div>
-
+        <div>
+            <Header />
             {/* 2. HERO BAR (Giữ nguyên 3D Laptop của em) */}
             <div className='herobar' style={{ display: 'flex', alignItems: 'center', padding: '20px' }}>
                 <div ref={container} className='herotext' style={{ flex: 1 }}>
@@ -238,25 +199,7 @@ function MainPage() {
                     <h3 style={{ color: '#333', marginBottom: '15px' }}>Product list(Browse Shop)</h3>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '15px' }}>
-                        {products.length > 0 ? (
-                            products.map(product => (
-                                <div key={product.parent_asin} style={{ background: '#f8f9fa', padding: '15px', borderRadius: '6px', border: '1px solid #dee2e6' }}>
-                                    <img src={product.image_url} alt={product.title} style={{ width: '100%', borderRadius: '4px' }} />
-                                    <h4 style={{ fontSize: '14px', margin: '10px 0 5px 0', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{product.title}</h4>
-                                    <p style={{ fontSize: '12px', color: '#6c757d', margin: '0' }}>Brand: {product.main_category}</p>
-                                    <p style={{ fontSize: '15px', color: '#dc3545', fontWeight: 'bold', margin: '5px 0 0 0' }}>{product.price}</p>
-                                </div>
-                            ))
-                        ) : (
-                            // VÒNG LẶP TỰ ĐỘNG TẠO ĐÚNG 20 CARD TRỐNG BẰNG CODE GỌN GÀNG
-                            Array.from({ length: 20 }).map((_, index) => (
-                                <div key={index} style={{ background: '#f8f9fa', padding: '20px 10px', borderRadius: '6px', border: '1px dashed #cbd5e1', textAlign: 'center', height: '180px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                                    <div style={{ width: '35px', height: '35px', background: '#e2e8f0', borderRadius: '4px', margin: '0 auto 8px auto' }}></div>
-                                    <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '500' }}>[ Card {index + 1} Empty ]</span>
-                                    <p style={{ fontSize: '11px', color: '#94a3b8', margin: '4px 0 0 0' }}>Awaiting Data...</p>
-                                </div>
-                            ))
-                        )}
+                       <ProductList/>
                     </div>
                 </div>
 
@@ -287,7 +230,6 @@ function MainPage() {
                 </div>
 
             </div>
-
 
         </div>
     )
