@@ -5,8 +5,9 @@ import { useGSAP } from "@gsap/react";
 import axios from "axios";
 
 import Header from "../components/Header.tsx";
-import ProductCard from "../components/ProductCard.tsx";
 import "../css/App.css";
+import CategoryTabs from "../components/CategoryTabs.tsx";
+import { ProductCard } from "../components/ProductCard.tsx";
 
 interface Product {
     parent_asin?: string;
@@ -28,10 +29,17 @@ function ProductsPage() {
 
     // States cho Phân trang (Pagination)
     const [currentPage, setCurrentPage] = useState<number>(0);
-    const [totalPages, setTotalPages] = useState<number>(1);
+    const [totalPages, setTotalPages] = useState<number>(10);
+
+    const [category, setCategory] = useState<string>("all");
+
+    // 🟢 States cho Tìm kiếm (Search)
+    const [searchQuery, setSearchQuery] = useState<string>(""); // Lưu giá trị input gõ
+    const [searchKeyword, setSearchKeyword] = useState<string>(""); // Lưu giá trị dùng để search API
+
     const pageSize = 20;
 
-    // 1. Fetch dữ liệu từ API Spring Boot theo trang
+    // 1. Fetch dữ liệu từ API Spring Boot theo trang, category và search
     useEffect(() => {
         let isMounted = true;
 
@@ -41,7 +49,8 @@ function ProductsPage() {
                 const response = await axios.get("http://localhost:8080/api/products", {
                     params: {
                         page: currentPage,
-                        size: pageSize
+                        size: pageSize,
+                        category: category === "all" ? "" : category,
                     },
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem("jwtToken")}`
@@ -52,7 +61,6 @@ function ProductsPage() {
 
                 console.log("Response data:", response.data);
 
-                // Xử lý dữ liệu dạng Pageable của Spring Boot
                 if (response.data.content) {
                     setProducts(response.data.content);
                     setTotalPages(response.data.totalPages || 1);
@@ -75,9 +83,44 @@ function ProductsPage() {
         return () => {
             isMounted = false;
         };
-    }, [currentPage, pageSize]);
+    }, [currentPage, pageSize, category, searchKeyword]); // 🟢 Thêm searchKeyword vào dependency
 
-    // 2. Hiệu ứng GSAP khi load giao diện lần đầu
+    const semanticSearch = async () => {
+        try {
+            const response = await axios.get("http://localhost:8080/api/products/semantic", {
+                params: {
+                    query: searchQuery,
+                    page: currentPage,
+                    size: pageSize,
+                },
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("jwtToken")}`
+                }
+            })
+            if (response.data.content) {
+                setProducts(response.data.content);
+                setTotalPages(response.data.totalPages || 1);
+            } else if (Array.isArray(response.data)) {
+                setProducts(response.data);
+            }
+        } catch (error) {
+            console.log(error)
+        }
+    }
+
+    const selectCategory = (cat: string) => {
+        setCategory(cat);
+        setCurrentPage(0);
+    };
+
+    // 🟢 Hàm xử lý Submit Search (khi bấm nút hoặc ấn Enter)
+    const handleSearchSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        setSearchKeyword(searchQuery.trim());
+        setCurrentPage(0);
+        semanticSearch();
+    };
+
     useGSAP(() => {
         gsap.from(".header-animate", {
             y: -20,
@@ -88,7 +131,6 @@ function ProductsPage() {
         });
     }, { scope: pageRef });
 
-    // 3. Hiệu ứng GSAP xuất hiện danh sách sản phẩm mỗi khi đổi trang hoặc load xong
     useEffect(() => {
         if (gridRef.current && products.length > 0 && !loading) {
             gsap.fromTo(
@@ -99,7 +141,6 @@ function ProductsPage() {
         }
     }, [products, loading]);
 
-    // Thao tác chuyển trang
     const handlePageChange = (newPage: number) => {
         if (newPage >= 0 && newPage < totalPages) {
             setCurrentPage(newPage);
@@ -111,7 +152,6 @@ function ProductsPage() {
         <div ref={pageRef} style={{ backgroundColor: '#ffffff', minHeight: '100vh', paddingBottom: '50px' }}>
             <Header />
 
-            {/* BREADCRUMB */}
             <div style={{ padding: '15px 50px', background: '#f8f9fa', borderBottom: '1px solid #e9ecef', fontSize: '14px', color: '#6c757d' }}>
                 <NavLink to="/" style={{ color: '#0d6efd', textDecoration: 'none' }}>Home</NavLink> /
                 <strong style={{ color: '#333', marginLeft: '8px' }}>All Products</strong>
@@ -119,17 +159,72 @@ function ProductsPage() {
 
             <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '30px 20px' }}>
 
-                {/* TIÊU ĐỀ TRANG */}
-                <div className="header-animate" style={{ textAlign: 'center', marginBottom: '30px' }}>
+                <div className="header-animate" style={{ textAlign: 'center', marginBottom: '25px' }}>
                     <h1 style={{ fontSize: '32px', fontWeight: '800', color: '#111', marginBottom: '10px' }}>
                         Explore Our Collection
                     </h1>
-                    <p style={{ color: '#6c757d', fontSize: '16px' }}>
+                    <p style={{ color: '#6c757d', fontSize: '16px', marginBottom: '25px' }}>
                         Find the best gears and accessories that define your style.
                     </p>
+
+                    {/* 🟢 THANH TÌM KIẾM BO TRÒN (SEARCH BAR) */}
+                    <form
+                        onSubmit={handleSearchSubmit}
+                        style={{
+                            position: 'relative',
+                            maxWidth: '600px',
+                            margin: '0 auto 20px auto',
+                            display: 'flex',
+                            alignItems: 'center'
+                        }}
+                    >
+                        <input
+                            type="text"
+                            placeholder="Search products by title..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            style={{
+                                width: '100%',
+                                padding: '14px 130px 14px 25px', // Padding phải chừa chỗ cho nút Search
+                                borderRadius: '50px', // 🟢 Bo tròn hiện đại
+                                border: '2px solid #e0e0e0',
+                                outline: 'none',
+                                fontSize: '15px',
+                                transition: 'all 0.3s ease',
+                                boxShadow: '0 4px 15px rgba(0,0,0,0.04)',
+                                backgroundColor: '#ffffff'
+                            }}
+                            onFocus={(e) => e.target.style.borderColor = '#0d6efd'}
+                            onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+                        />
+                        <button
+                            type="submit"
+                            style={{
+                                position: 'absolute',
+                                right: '6px', // 🟢 Nút nằm gọn bên trong khung input
+                                padding: '10px 24px',
+                                borderRadius: '40px', // 🟢 Bo tròn đồng bộ với thanh input
+                                border: 'none',
+                                backgroundColor: '#0d6efd',
+                                color: '#ffffff',
+                                fontSize: '14px',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                transition: 'background-color 0.2s ease',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#0b5ed7'}
+                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#0d6efd'}
+                        >
+                            <span>Search</span>
+                        </button>
+                    </form>
                 </div>
 
-                {/* KHU VỰC LƯỚI SẢN PHẨM */}
+                <CategoryTabs activeCategory={category ?? "all"} onSelectCategory={selectCategory} />
+
                 <div style={{
                     background: '#ffffff',
                     padding: '30px',
@@ -139,14 +234,13 @@ function ProductsPage() {
                 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', borderBottom: '2px solid #f1f3f5', paddingBottom: '15px' }}>
                         <h2 style={{ fontSize: '20px', color: '#333', margin: 0 }}>
-                            All Products
+                            {searchKeyword ? `Search results for "${searchKeyword}"` : "All Products"}
                         </h2>
                         <span style={{ fontSize: '14px', color: '#6c757d', fontWeight: 'bold' }}>
                             {loading ? "Loading..." : `Showing ${products.length} results`}
                         </span>
                     </div>
 
-                    {/* HIỂN THỊ DANH SÁCH / SPINNER */}
                     {!loading && products.length > 0 ? (
                         <div ref={gridRef} style={{
                             display: 'grid',
@@ -154,9 +248,10 @@ function ProductsPage() {
                             gap: '25px'
                         }}>
                             {products.map(product => (
+                                // eslint-disable-next-line react-hooks/purity
                                 <div key={product.parent_asin || Math.random().toString()}>
                                     <NavLink to={`/product/${product.parent_asin}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                                        <ProductCard product={product} />
+                                        <ProductCard key={product.parent_asin} product={product} />
                                     </NavLink>
                                 </div>
                             ))}

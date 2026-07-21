@@ -122,7 +122,7 @@ const Discount_Box = () => {
                 transform: 'translate(-50%, -50%)',
                 textShadow: '2px 2px 4px #000000',
                 pointerEvents: 'none',
-                zIndex: 10,
+                zIndex: 1,
                 whiteSpace: 'nowrap'
             }}>
                 Save 40% On All Items

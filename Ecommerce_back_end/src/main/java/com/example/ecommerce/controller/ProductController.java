@@ -2,6 +2,7 @@ package com.example.ecommerce.controller;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -14,13 +15,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.ecommerce.request.PaginationRequest;
 import com.example.ecommerce.request.ProductRequest;
 import com.example.ecommerce.response.ProductResponse;
 import com.example.ecommerce.service.ProductService;
 
-import jakarta.validation.Valid; // Kích hoạt Validation cho RequestBody
-import lombok.RequiredArgsConstructor;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor; // Kích hoạt Validation cho RequestBody
 
 @RestController
 @RequestMapping("/api/products")
@@ -43,9 +43,10 @@ public class ProductController {
     @GetMapping
     public ResponseEntity<List<ProductResponse>> getAllProducts(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam String category) {
 
-        List<ProductResponse> products = productService.getAllProducts(page, size);
+        List<ProductResponse> products = productService.getAllProducts(page, size, category);
         return ResponseEntity.ok(products);
     }
 
@@ -78,5 +79,14 @@ public class ProductController {
     public ResponseEntity<String> deleteProduct(@PathVariable String asin) {
         productService.deleteProduct(asin);
         return ResponseEntity.ok("Product deleted successfully with ASIN: " + asin);
+    }
+
+    @GetMapping("/semantic")
+    public ResponseEntity<Page<ProductResponse>> semanticSearch(
+            @RequestParam(name = "query") String query,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "20") int size) {
+        Page<ProductResponse> products = productService.semanticSearch(query, page, size);
+        return ResponseEntity.ok(products);
     }
 }

@@ -1,17 +1,8 @@
 import { useEffect, useState } from "react";
-import ProductCard from "./ProductCard";
 import "../css/ProductList.css";
 import axios from "axios";
-
-interface Product {
-    parent_asin?: string;
-    title?: string;
-    price?: number | string;
-    main_category?: string;
-    category?: string;
-    image_url?: string;
-    store?: string;
-}
+import { ProductCard } from "./ProductCard";
+import type { Product } from "./ProductCard";
 
 const ProductList = () => {
     const [products, setProducts] = useState<Product[]>([]);
@@ -20,7 +11,7 @@ const ProductList = () => {
     // Pagination state
     const [currentPage, setCurrentPage] = useState<number>(0);
     const [totalPages, setTotalPages] = useState<number>(1);
-    const pageSize = 20; // Number of items per page
+    const pageSize = 20;
 
     useEffect(() => {
         let isMounted = true;
@@ -42,7 +33,6 @@ const ProductList = () => {
 
                 console.log("Response data:", response.data);
 
-                // Handle response data from Spring Boot Pageable
                 if (response.data.content) {
                     setProducts(response.data.content);
                     setTotalPages(response.data.totalPages || 1);
@@ -67,7 +57,6 @@ const ProductList = () => {
         };
     }, [currentPage, pageSize]);
 
-    // Handle page navigation
     const handlePageChange = (newPage: number) => {
         if (newPage >= 0 && newPage < totalPages) {
             setCurrentPage(newPage);
@@ -77,7 +66,6 @@ const ProductList = () => {
 
     return (
         <div style={{ padding: '20px 0' }}>
-            {/* PRODUCT GRID */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '15px' }}>
                 {!loading && products.length > 0 ? (
                     products.map(product => (
@@ -94,7 +82,6 @@ const ProductList = () => {
                 )}
             </div>
 
-            {/* PAGINATION CONTROLS */}
             {totalPages > 1 && (
                 <div style={{
                     display: 'flex',
@@ -103,7 +90,6 @@ const ProductList = () => {
                     gap: '10px',
                     marginTop: '30px'
                 }}>
-                    {/* Previous Button */}
                     <button
                         onClick={() => handlePageChange(currentPage - 1)}
                         disabled={currentPage === 0 || loading}
@@ -122,7 +108,6 @@ const ProductList = () => {
                         Page {currentPage + 1} of {totalPages}
                     </span>
 
-                    {/* Next Button */}
                     <button
                         onClick={() => handlePageChange(currentPage + 1)}
                         disabled={currentPage >= totalPages - 1 || loading}
