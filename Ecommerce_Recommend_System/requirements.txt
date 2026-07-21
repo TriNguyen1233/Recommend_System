@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+torch
+torch_geometric
+psycopg[binary]
+pandas
+joblib
+scikit-learn
+pydantic
+python-dotenv
+ollama
+requests
