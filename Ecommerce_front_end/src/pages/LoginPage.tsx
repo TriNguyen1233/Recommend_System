@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 import { signInWithPopup } from 'firebase/auth';
 // Ensure your firebase.ts file exports googleProvider, facebookProvider, and auth
 import { auth, facebookProvider, googleProvider } from "../firebase/firebase";
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import { useNavigate } from "react-router-dom"
 
 function LoginPage() {
@@ -18,6 +18,10 @@ function LoginPage() {
     // Handle normal email/password login
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
+        // 🟢 Toast ID for normal login
+        const toastId = toast.loading('Logging in...');
+
         const loginUrl = url + "/login";
         const requestBody = {
             email: emailRef.current?.value,
@@ -33,26 +37,29 @@ function LoginPage() {
             localStorage.setItem("item", data['id']);
             localStorage.setItem("jwtToken", data['token']);
 
-            toast.success('Login success! 🎉');
+            // 🟢 Update toast with English success message
+            toast.success('Login successful! 🎉', { id: toastId });
             navigate("/homepage"); // Added redirection to homepage on form login success
         }).catch((error) => {
             if (error.response) {
                 console.error("Server error:", error.response.data.message || error.response.statusText);
-                toast.error("Login failed: " + (error.response.data.message || "Invalid credentials"));
+                // 🟢 Update toast with English error message
+                toast.error("Login failed: " + (error.response.data.message || "Invalid credentials"), { id: toastId });
             } else {
                 console.error("Connection error:", error.message);
-                toast.error("Cannot connect to server!");
+                // 🟢 Update toast with English error message
+                toast.error("Cannot connect to server!", { id: toastId });
             }
         });
     };
 
-    const handleFirebaseLoginOnBackend = async (idToken: string, provider: string) => {
+    const handleFirebaseLoginOnBackend = async (idToken: string, provider: string, toastId: string) => {
         try {
             const response = await axios.post('http://localhost:8080/api/auth/firebase-login', {
                 token: idToken
             });
 
-            console.log("Backend response:", response.data); 
+            console.log("Backend response:", response.data);
 
             const token = response.data.mySystemToken || response.data.token || response.data.jwtToken || response.data.accessToken;
             const user = response.data.user || response.data;
@@ -62,52 +69,59 @@ function LoginPage() {
                 localStorage.setItem("item", user.id || user.uid || "");
                 localStorage.setItem("jwtToken", token);
 
-                toast.success(`${provider} login successful! 🎉`);
+                // 🟢 English success message
+                toast.success(`${provider} login successful! 🎉`, { id: toastId });
 
                 setTimeout(() => {
                     navigate("/homepage");
                 }, 500);
             } else {
-                toast.error("Authentication failed: No token received from server!");
+                // 🟢 English error message
+                toast.error("Authentication failed: No token received from server!", { id: toastId });
             }
         } catch (error: any) {
             console.error(`Error sending ${provider} token to backend:`, error);
-            toast.error("System authentication failed!");
+            // 🟢 English error message
+            toast.error("System authentication failed!", { id: toastId });
         }
     };
 
     // Facebook Login via Firebase
     const handleFacebookLogin = async () => {
+        // 🟢 Toast ID for Facebook login
+        const toastId = toast.loading('Processing Facebook login...');
         try {
             const result = await signInWithPopup(auth, facebookProvider);
             const idToken = await result.user.getIdToken();
             console.log("Firebase FB Token:", idToken);
 
-            await handleFirebaseLoginOnBackend(idToken, "Facebook");
+            await handleFirebaseLoginOnBackend(idToken, "Facebook", toastId);
         } catch (error: any) {
             console.error("Firebase FB error:", error);
             if (error.code === 'auth/popup-closed-by-user') {
-                toast.error('Facebook login popup was closed by user.');
+                toast.error('Facebook login popup was closed by user.', { id: toastId });
             } else {
-                toast.error("Facebook login failed: " + error.message);
+                toast.error("Facebook login failed: " + error.message, { id: toastId });
             }
         }
     };
 
     // Google Login via Firebase
     const handleGoogleLogin = async () => {
+        // 🟢 Toast ID for Google login
+        const toastId = toast.loading('Processing Google login...');
         try {
             const result = await signInWithPopup(auth, googleProvider);
             const idToken = await result.user.getIdToken();
             console.log("Firebase Google Token:", idToken);
 
-            await handleFirebaseLoginOnBackend(idToken, "Google");
+            await handleFirebaseLoginOnBackend(idToken, "Google", toastId);
         } catch (error: any) {
             console.error("Firebase Google error:", error);
             if (error.code === 'auth/popup-closed-by-user') {
-                toast.error("Google login popup was closed by user.");
+                toast.error("Google login popup was closed by user.", { id: toastId });
             } else {
-                toast.error("Google login failed: " + error.message);
+                toast.error("Google login failed: " + error.message, { id: toastId });
             }
         }
     };
@@ -116,7 +130,6 @@ function LoginPage() {
         <div className="login-page">
             <div className="login-form">
                 <div className="login-brand">TechStore</div>
-                <Toaster position="top-right" reverseOrder={false} />
                 <h2 className="login-title">Login</h2>
                 <p className="login-subtitle">Welcome back! Please login to your account.</p>
 
