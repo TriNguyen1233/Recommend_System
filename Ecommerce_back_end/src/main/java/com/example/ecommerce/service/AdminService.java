@@ -2,57 +2,43 @@ package com.example.ecommerce.service;
 
 import java.util.List;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
-
 import com.example.ecommerce.entity.User;
 import com.example.ecommerce.enums.UserStatus;
-import com.example.ecommerce.repository.UserRepository;
 
-@Service
-public class AdminService {
-    UserRepository userRepository;
+public interface AdminService {
 
-    public AdminService(UserRepository userRepository) {
-        this.userRepository = userRepository;
-    }
+    /**
+     * Tạo mới một người dùng vào hệ thống.
+     */
+    User createUser(User user);
 
-    public User createUser(User user) {
-        userRepository.save(user);
-        return user;
-    }
+    /**
+     * Cập nhật thông tin của người dùng dựa trên ID.
+     */
+    User updateUser(String id, User user);
 
-    public User updateUser(String id, User user) {
-        userRepository.save(user);
-        return user;
-    }
+    /**
+     * Xóa một người dùng ra khỏi hệ thống dựa trên ID.
+     */
+    void deleteUser(String id);
 
-    public void deleteUser(String id) {
-        userRepository.deleteById(id);
-    }
+    /**
+     * Lấy thông tin chi tiết của người dùng bằng ID.
+     */
+    User getUserById(String id);
 
-    public User getUserById(String id) {
-        return userRepository.findById(id).orElse(null);
-    }
+    /**
+     * Tìm kiếm người dùng trong hệ thống dựa trên Email.
+     */
+    User getUserByEmail(String email);
 
-    public User getUserByEmail(String email) {
-        return userRepository.findByEmail(email)
-                .orElseThrow(
-                        () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found with email: " + email));
-    }
+    /**
+     * Lấy danh sách toàn bộ người dùng hiện có.
+     */
+    List<User> getAllUsers();
 
-    public List<User> getAllUsers() {
-        return userRepository.findAll();
-    }
-
-    public User changeUserStatus(String email, UserStatus status) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(
-                        () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found with email: " + email));
-        user.setStatus(status);
-        userRepository.save(user);
-
-        return user;
-    }
+    /**
+     * Thay đổi trạng thái hoạt động (Status) của người dùng qua Email.
+     */
+    User changeUserStatus(String email, UserStatus status);
 }

@@ -33,14 +33,12 @@ public class Cart {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "cart_id")
-    private int Id; // Fixed naming convention (camelCase)
+    private int Id;
 
 
     @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<CartItem> cartItems; // Fixed typo from 'carList'
+    private List<CartItem> cartItems;
 
-    // Added relationship: Many carts can belong to one user (over time), 
-    // or change to @OneToOne if a user only ever has one cart lifecycle.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", referencedColumnName = "user_id", nullable = false)
     private User user;
