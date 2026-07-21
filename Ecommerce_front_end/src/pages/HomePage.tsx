@@ -9,10 +9,10 @@ import { OrbitControls, Stage } from '@react-three/drei'
 import { NavLink } from 'react-router-dom';
 import CategoryTabs from "../components/CategoryTabs.tsx"
 import axios from 'axios'
-import ProductCard from '../components/ProductCard.tsx'
 import Header from '../components/Header.tsx';
 import { productSeeds, aiRecommendationSeeds } from '../data/dataSeeds.ts'
 import ProductList from '../components/Productlist.tsx';
+import { ProductCard } from '../components/ProductCard.tsx';
 interface Product {
     parent_asin: string;
     title: string;
@@ -33,7 +33,6 @@ function MainPage() {
     const userIdRef = useRef<HTMLInputElement | null>(null);
     const searchTextRef = useRef<HTMLTextAreaElement | null>(null);
     const addCartRef = useRef<HTMLDivElement | null>(null);
-    // --- Trạng thái mảng dữ liệu rỗng (Sẵn sàng chờ Quang đổ data thật) ---
     const [products, setProducts] = useState<Product[]>(productSeeds);
     const [aiRecs, setAiRecs] = useState<Product[]>(aiRecommendationSeeds);
     const [modal, setModal] = useState(false);
@@ -185,7 +184,6 @@ function MainPage() {
             </div>
             <div className='category-section' style={{ padding: '0 20px' }}>
                 <h2>Shop by Category</h2>
-                <CategoryTabs />
                 <div><button className='loginbutton' style={{ backgroundColor: '#0d6efd', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '4px' }} onClick={() => {
                     setModal(!modal)
                 }}>search</button></div>
@@ -203,7 +201,6 @@ function MainPage() {
                     </div>
                 </div>
 
-                {/* KHU PHẢI: DÙNG VÒNG LẶP TỰ ĐỘNG IN RA 5 PRODUCT CARD GỢI Ý CỦA AI */}
                 <div style={{ flex: '1', minWidth: '300px', background: '#ffffff', padding: '20px', borderRadius: '8px', border: '2px dashed #198754', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
                     <h3 style={{ color: '#198754', marginBottom: '15px' }}> AI Recommendation (NCF Core Output)</h3>
 

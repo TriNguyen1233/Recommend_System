@@ -7,7 +7,7 @@ interface Product {
     price: number | string;
     main_category: string;
     category: string;
-    image_url: string;
+    image: string;
     store: string;
 }
 
@@ -80,7 +80,7 @@ function ProductCard({ product }: { product: Product }) {
             {/* 3. Gắn ref={imgRef} vào thẻ img */}
             <img
                 ref={imgRef}
-                src={product.image_url || 'https://via.placeholder.com/150'}
+                src={product.image || 'https://placehold.co/150?text=No+Image'}
                 alt={product.title}
                 style={{
                     width: '100%',
@@ -124,7 +124,8 @@ function ProductCard({ product }: { product: Product }) {
                         alignItems: "center",
                         justifyContent: "center",
                         borderRadius: "30px",
-                        cursor: "pointer"         // Thêm con trỏ dạng bàn tay khi hover vào nút
+                        cursor: "pointer",     // Thêm con trỏ dạng bàn tay khi hover vào nút
+                        zIndex:3,
                     }}
                     onClick={() => {
                         AddCartAnimation(imgRef.current);
@@ -139,4 +140,5 @@ function ProductCard({ product }: { product: Product }) {
     );
 }
 
-export default ProductCard;
+export { ProductCard };
+export type { Product };

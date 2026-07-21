@@ -1,29 +1,121 @@
-import "../css/CategoryTabs.css"
-function CategoryTabs() {
+import "../css/CategoryTabs.css";
+
+interface CategoryTabsProps {
+    activeCategory: string; // Tên nút đang được chọn
+    onSelectCategory: (categoryName: string) => void; // Hàm phát sự kiện khi bấm nút
+}
+
+function CategoryTabs({ activeCategory, onSelectCategory }: CategoryTabsProps) {
+    // 1. Khai báo danh sách Category kèm Icon
+    const categories = [
+        {
+            id: "all",
+            label: "All",
+            icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="24" height="24">
+                    <path fill="currentColor" d="M288 104C288 81.9 270.1 64 248 64L200 64C177.9 64 160 81.9 160 104L160 152C160 174.1 177.9 192 200 192L248 192C270.1 192 288 174.1 288 152L288 104zM288 296C288 273.9 270.1 256 248 256L200 256C177.9 256 160 273.9 160 296L160 344C160 366.1 177.9 384 200 384L248 384C270.1 384 288 366.1 288 344L288 296zM160 488L160 536C160 558.1 177.9 576 200 576L248 576C270.1 576 288 558.1 288 536L288 488C288 465.9 270.1 448 248 448L200 448C177.9 448 160 465.9 160 488zM480 104C480 81.9 462.1 64 440 64L392 64C369.9 64 352 81.9 352 104L352 152C352 174.1 369.9 192 392 192L440 192C462.1 192 480 174.1 480 152L480 104zM352 296L352 344C352 366.1 369.9 384 392 384L440 384C462.1 384 480 366.1 480 344L480 296C480 273.9 462.1 256 440 256L392 256C369.9 256 352 273.9 352 296zM480 488C480 465.9 462.1 448 440 448L392 448C369.9 448 352 465.9 352 488L352 536C352 558.1 369.9 576 392 576L440 576C462.1 576 480 558.1 480 536L480 488z" />
+                </svg>
+            )
+        },
+        {
+            id: "Computers",
+            label: "Computers",
+            icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 5a2 2 0 0 1 2 2v8.526a2 2 0 0 0 .212.897l1.068 2.127a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45l1.068-2.127A2 2 0 0 0 4 15.526V7a2 2 0 0 1 2-2z" />
+                    <path d="M20.054 15.987H3.946" />
+                </svg>
+            )
+        },
+        {
+            id: "All Electronics",
+            label: "Electronics",
+            icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+                    <path d="M434.8 54.1C446.7 62.7 451.1 78.3 445.7 91.9L367.3 288L512 288C525.5 288 537.5 296.4 542.1 309.1C546.7 321.8 542.8 336 532.5 344.6L244.5 584.6C233.2 594 217.1 594.5 205.2 585.9C193.3 577.3 188.9 561.7 194.3 548.1L272.7 352L128 352C114.5 352 102.5 343.6 97.9 330.9C93.3 318.2 97.2 304 107.5 295.4L395.5 55.4C406.8 46 422.9 45.5 434.8 54.1z" />
+                </svg>
+            )
+        },
+        {
+            id: "Cell Phones & Accessories",
+            label: "Phones",
+            icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+                    <path d="M144 128C144 92.7 172.7 64 208 64L432 64C467.3 64 496 92.7 496 128L496 512C496 547.3 467.3 576 432 576L208 576C172.7 576 144 547.3 144 512L144 128zM256 504C256 517.3 266.7 528 280 528L360 528C373.3 528 384 517.3 384 504C384 490.7 373.3 480 360 480L280 480C266.7 480 256 490.7 256 504zM432 128L208 128L208 432L432 432L432 128z" />
+                </svg>
+            )
+        },
+        {
+            id: "Industrial & Scientific",
+            label: "Scientific",
+            icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+                    <path d="M224 32C241.7 32 256 46.3 256 64L256 160L384 160L384 64C384 46.3 398.3 32 416 32C433.7 32 448 46.3 448 64L448 160L512 160C529.7 160 544 174.3 544 192C544 209.7 529.7 224 512 224L512 288C512 383.1 442.8 462.1 352 477.3L352 544C352 561.7 337.7 576 320 576C302.3 576 288 561.7 288 544L288 477.3C197.2 462.1 128 383.1 128 288L128 224C110.3 224 96 209.7 96 192C96 174.3 110.3 160 128 160L192 160L192 64C192 46.3 206.3 32 224 32z" />
+                </svg>
+            )
+        },
+        {
+            id: "Home Audio & Theater",
+            label: "Speakers",
+            icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect width="16" height="20" x="4" y="2" rx="2" />
+                    <path d="M12 6h.01" />
+                    <circle cx="12" cy="14" r="4" />
+                    <path d="M12 14h.01" />
+                </svg>
+            )
+        },
+
+        {
+            id: "Camera & Photo",
+            label: "Camera",
+            icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+                    <path d="M213.1 128.8L202.7 160L128 160C92.7 160 64 188.7 64 224L64 480C64 515.3 92.7 544 128 544L512 544C547.3 544 576 515.3 576 480L576 224C576 188.7 547.3 160 512 160L437.3 160L426.9 128.8C420.4 109.2 402.1 96 381.4 96L258.6 96C237.9 96 219.6 109.2 213.1 128.8zM320 256C373 256 416 299 416 352C416 405 373 448 320 448C267 448 224 405 224 352C224 299 267 256 320 256z" />
+                </svg>
+            )
+        },
+        {
+            id: "Amazon Devices",
+            label: "Amazon",
+            icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+                    <path d="M353.7 226.7C305 228.5 184.2 242.2 184.2 344.2C184.2 453.7 322.5 458.2 367.7 387.4C374.2 397.6 403.1 424.9 413 434.2L469.8 378.2C469.8 378.2 437.5 352.9 437.5 325.4L437.5 178.3C437.5 153 413 96 325.2 96C237.2 96 190.5 151 190.5 200.3L264 207.1C280.3 157.6 318.2 157.6 318.2 157.6C358.9 157.5 353.7 187.4 353.7 226.7zM353.7 313.5C353.7 393.5 269.5 381.5 269.5 330.7C269.5 283.5 320 274 353.7 272.9L353.7 313.5zM489.7 477C482 487 419.7 544 315.2 544C210.7 544 130.7 472.5 106.2 443C99.4 435.3 107.2 431.7 111.7 434.7C185 479.2 299.5 552.5 484.2 465C491.7 461.3 497.5 467 489.7 477zM529.5 479.2C523 495 513.5 506 508.3 510.2C502.8 514.7 498.8 512.9 501.8 506.4C504.8 499.9 521.1 459.9 514.5 451.4C508 443.1 477.5 447.1 466.5 448.2C455.7 449.2 453.5 450.2 452.5 447.9C450.2 442.2 474.2 432.4 490 430.4C505.7 428.6 531 429.6 536 436.1C539.7 441.2 536 463.2 529.5 479.2z" />
+                </svg>
+            )
+        },
+        {
+            id: "Apple Products",
+            label: "Apple",
+            icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+                    <path d="M447.1 332.7C446.9 296 463.5 268.3 497.1 247.9C478.3 221 449.9 206.2 412.4 203.3C376.9 200.5 338.1 224 323.9 224C308.9 224 274.5 204.3 247.5 204.3C191.7 205.2 132.4 248.8 132.4 337.5C132.4 363.7 137.2 390.8 146.8 418.7C159.6 455.4 205.8 545.4 254 543.9C279.2 543.3 297 526 329.8 526C361.6 526 378.1 543.9 406.2 543.9C454.8 543.2 496.6 461.4 508.8 424.6C443.6 393.9 447.1 334.6 447.1 332.7zM390.5 168.5C417.8 136.1 415.3 106.6 414.5 96C390.4 97.4 362.5 112.4 346.6 130.9C329.1 150.7 318.8 175.2 321 202.8C347.1 204.8 370.9 191.4 390.5 168.5z" />
+                </svg>
+            )
+        }
+    ];
+
     return (
         <div className="category-tabs">
-            <div className="category-tab"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-laptop-icon lucide-laptop"><path d="M18 5a2 2 0 0 1 2 2v8.526a2 2 0 0 0 .212.897l1.068 2.127a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45l1.068-2.127A2 2 0 0 0 4 15.526V7a2 2 0 0 1 2-2z" /><path d="M20.054 15.987H3.946" /></svg>
-                <div className="category-text">Laptop</div>
-            </div>
-            <div className="category-tab"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-smartphone-icon lucide-smartphone"><rect width="14" height="20" x="5" y="2" rx="2" ry="2" /><path d="M12 18h.01" /></svg>
-                <div className="category-text">Phone</div>
-            </div>
-            <div className="category-tab"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-monitor-icon lucide-monitor"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
-                <div className="category-text">Monitors</div>
-            </div>
-            <div className="category-tab"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-gamepad2-icon lucide-gamepad-2"><line x1="6" x2="10" y1="11" y2="11"/><line x1="8" x2="8" y1="9" y2="13"/><line x1="15" x2="15.01" y1="12" y2="12"/><line x1="18" x2="18.01" y1="10" y2="10"/><path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z"/></svg>
-                <div className="category-text">Consoles</div>
-            </div>
-            <div className="category-tab"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-speaker-icon lucide-speaker"><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M12 6h.01"/><circle cx="12" cy="14" r="4"/><path d="M12 14h.01"/></svg>
-                <div className="category-text">Speakers</div>
-            </div>
-            <div className="category-tab"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-headphones-icon lucide-headphones"><path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/></svg>
-                <div className="category-text">Headphones</div>
-            </div>
-             <div className="category-tab"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-mouse-icon lucide-mouse"><rect x="5" y="2" width="14" height="20" rx="7"/><path d="M12 6v4"/></svg>
-                <div className="category-text">Mouse</div>
-            </div>
+            {categories.map((cat) => {
+                // Kiểm tra tab này có đang active không
+                const isActive = activeCategory === cat.id;
+
+                return (
+                    <div
+                        key={cat.id}
+                        // Thêm class 'active' nếu tab được chọn
+                        className={`category-tab ${isActive ? "active" : ""}`}
+                        onClick={() => onSelectCategory(cat.id)}
+                    >
+                        {cat.icon}
+                        <div className="category-text">{cat.label}</div>
+                    </div>
+                );
+            })}
         </div>
     );
 }
+
 export default CategoryTabs;

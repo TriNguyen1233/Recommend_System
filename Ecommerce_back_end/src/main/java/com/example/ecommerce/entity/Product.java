@@ -48,7 +48,7 @@ public class Product {
     // Sử dụng float theo nhu cầu của bạn, đi kèm validation không âm
     @Column(name = "price", nullable = false)
     @PositiveOrZero(message = "Price must be greater than or equal to 0")
-    private float price; 
+    private float price;
 
     @Column(name = "image_url") // Mặc định nullable = true
     private String image;
@@ -64,14 +64,14 @@ public class Product {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     @NotNull(message = "Product status is required")
-    private ProductStatus status = ProductStatus.ACTIVE; // Thêm trạng thái mặc định nếu cần
+    private ProductStatus status = ProductStatus.ACTIVE;
 
-    @Column(name = "category") // Mặc định nullable = true
+    @Column(name = "category")
     private String category;
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Review> reviews = new ArrayList<>(); // Khởi tạo sẵn tránh NullPointerException
+    private List<Review> reviews = new ArrayList<>();
 
-    @Column(name = "embedding", columnDefinition = "float[]") // Mặc định nullable = true
+    @Column(name = "embedding", columnDefinition = "vector(768)")
     private float[] embedding;
 }
