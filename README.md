@@ -1,10 +1,5 @@
-# 🚀 Hướng Dẫn Cài Đặt Từ A Đến Z: E-Commerce Recommendation System
 
-Tài liệu này hướng dẫn chi tiết từng bước **từ một máy tính trắng (mới hoàn toàn chưa cài đặt gì)** đến khi cài đặt thành công, khởi chạy và vận hành toàn bộ hệ thống gợi ý sản phẩm Thương mại Điện tử.
-
----
-
-## 📐 1. Tổng Quan Kiến Trúc Hệ Thống
+1. Tổng Quan Kiến Trúc Hệ Thống
 
 Hệ thống bao gồm 3 thành phần chính hoạt động phối hợp:
 
