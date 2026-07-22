@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  # 1. Cơ sở dữ liệu PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: cfr_postgres_db
+    restart: always
+    environment:
+      POSTGRES_DB: CFRSystem
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "12332100"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d CFRSystem"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. Dịch vụ AI LLM Ollama
+  ollama:
+    image: ollama/ollama:latest
+    container_name: cfr_ollama_service
+    restart: always
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
+  # 3. Tự động tải AI Model (llama3 và nomic-embed-text) vào Ollama
+  ollama-model-puller:
+    image: curlimages/curl:latest
+    container_name: cfr_ollama_model_puller
+    depends_on:
+      - ollama
+    entrypoint: >
+      /bin/sh -c "
+      echo 'Đang chờ Ollama khởi động...';
+      sleep 5;
+      echo 'Tải model llama3...';
+      curl -s http://ollama:11434/api/pull -d '{\"name\": \"llama3\"}';
+      echo 'Tải model nomic-embed-text...';
+      curl -s http://ollama:11434/api/pull -d '{\"name\": \"nomic-embed-text\"}';
+      echo 'Hoàn tất tải AI models!';
+      "
+
+  # 4. Dịch vụ Python AI Recommendation System (FastAPI)
+  recommend-service:
+    build:
+      context: ./Ecommerce_Recommend_System
+      dockerfile: Dockerfile
+    container_name: cfr_recommend_ai
+    restart: always
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: CFRSystem
+      DB_USER: postgres
+      DB_PASSWORD: "12332100"
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # 5. Dịch vụ Backend Java (Spring Boot)
+  backend-service:
+    build:
+      context: ./Ecommerce_back_end
+      dockerfile: Dockerfile
+    container_name: cfr_backend_java
+    restart: always
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/CFRSystem
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: "12332100"
+      SPRING_AI_OLLAMA_BASE_URL: http://ollama:11434
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+
+  # 6. Dịch vụ Frontend React (Vite)
+  frontend-service:
+    build:
+      context: ./Ecommerce_front_end
+      dockerfile: Dockerfile
+    container_name: cfr_frontend_react
+    restart: always
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend-service
+
+volumes:
+  postgres_data:
+  ollama_data:
