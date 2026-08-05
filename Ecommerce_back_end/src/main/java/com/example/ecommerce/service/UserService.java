@@ -1,6 +1,6 @@
 package com.example.ecommerce.service;
 
-import org.springframework.security.core.Authentication;
+import java.util.Map;
 
 import com.example.ecommerce.entity.User;
 import com.example.ecommerce.request.LoginRequest;
@@ -36,4 +36,9 @@ public interface UserService {
     boolean forgetPassword(String email);
 
     User processFirebaseUser(String uid, String email, String name, String picture);
+
+    void updateAvatar(String id, String avatarUrl);
+
+    UserResponse updateUser(String id, Map<String, Object> updates);
+
 }

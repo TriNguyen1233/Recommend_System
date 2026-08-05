@@ -1,9 +1,15 @@
 package com.example.ecommerce.entity;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import com.example.ecommerce.enums.ProductStatus;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -29,6 +35,7 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Product {
 
     @Id
@@ -48,7 +55,7 @@ public class Product {
     // Sử dụng float theo nhu cầu của bạn, đi kèm validation không âm
     @Column(name = "price", nullable = false)
     @PositiveOrZero(message = "Price must be greater than or equal to 0")
-    private float price;
+    private BigDecimal price;
 
     @Column(name = "image_url") // Mặc định nullable = true
     private String image;
@@ -70,8 +77,10 @@ public class Product {
     private String category;
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<Review> reviews = new ArrayList<>();
 
     @Column(name = "embedding", columnDefinition = "vector(768)")
+    @JdbcTypeCode(SqlTypes.VECTOR)
     private float[] embedding;
 }

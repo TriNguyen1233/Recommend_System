@@ -2,8 +2,8 @@ package com.example.ecommerce.controller;
 
 import java.util.List;
 
-import org.springframework.data.domain.Page;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,7 +29,6 @@ public class ProductController {
     @Autowired
     private final ProductService productService;
 
-    // 1. LẤY MỘT SẢN PHẨM THEO ASIN - Trả về ProductResponse
     @GetMapping("/{asin}")
     public ResponseEntity<ProductResponse> getProductByAsin(@PathVariable String asin) {
         ProductResponse productResponse = productService.getProductByAsin(asin);

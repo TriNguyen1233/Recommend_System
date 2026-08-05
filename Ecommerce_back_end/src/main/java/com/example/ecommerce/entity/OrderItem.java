@@ -1,6 +1,9 @@
 package com.example.ecommerce.entity;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+
+import com.fasterxml.jackson.annotation.JsonBackReference;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -35,6 +38,7 @@ public class OrderItem {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false)
     @NotNull(message = "Order item must belong to an order")
+    @JsonBackReference
     private Order order;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -57,9 +61,9 @@ public class OrderItem {
     @Column(name = "price", nullable = false)
     @NotNull(message = "Price cannot be null")
     @PositiveOrZero(message = "Price must be greater than or equal to 0")
-    private Float price; // Đổi sang Float để check NotNull ở tầng ứng dụng dễ dàng hơn
+    private BigDecimal price;
 
     @Column(name = "discount", nullable = true)
     @PositiveOrZero(message = "Discount must be greater than or equal to 0")
-    private Float discount; // Dùng Float để cột này trong database thoải mái nhận giá trị NULL
+    private BigDecimal discount;
 }

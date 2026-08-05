@@ -7,7 +7,7 @@ import axios from "axios";
 import Header from "../components/Header.tsx";
 import "../css/App.css";
 import CategoryTabs from "../components/CategoryTabs.tsx";
-import { ProductCard } from "../components/ProductCard.tsx";
+import ProductList from "../components/Productlist.tsx";
 
 interface Product {
     parent_asin?: string;
@@ -15,77 +15,64 @@ interface Product {
     price?: number | string;
     main_category?: string;
     category?: string;
+    image?: string;
     image_url?: string;
     store?: string;
 }
 
 function ProductsPage() {
     const pageRef = useRef<HTMLDivElement | null>(null);
-    const gridRef = useRef<HTMLDivElement | null>(null);
 
-    // States cho dữ liệu API & Loading
+    const normalizeProducts = (items: any[]): Product[] => {
+        return items.map((item) => ({
+            ...item,
+            image: item.image ?? item.image_url ?? ""
+        }));
+    };
+
+    // States
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
-
-    // States cho Phân trang (Pagination)
     const [currentPage, setCurrentPage] = useState<number>(0);
     const [totalPages, setTotalPages] = useState<number>(10);
-
     const [category, setCategory] = useState<string>("all");
-
-    // 🟢 States cho Tìm kiếm (Search)
-    const [searchQuery, setSearchQuery] = useState<string>(""); // Lưu giá trị input gõ
-    const [searchKeyword, setSearchKeyword] = useState<string>(""); // Lưu giá trị dùng để search API
+    const [searchQuery, setSearchQuery] = useState<string>("");
+    const [searchKeyword, setSearchKeyword] = useState<string>("");
 
     const pageSize = 20;
 
-    // 1. Fetch dữ liệu từ API Spring Boot theo trang, category và search
-    useEffect(() => {
-        let isMounted = true;
-
-        const loadProducts = async () => {
-            try {
-                setLoading(true);
-                const response = await axios.get("http://localhost:8080/api/products", {
-                    params: {
-                        page: currentPage,
-                        size: pageSize,
-                        category: category === "all" ? "" : category,
-                    },
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem("jwtToken")}`
-                    }
-                });
-
-                if (!isMounted) return;
-
-                console.log("Response data:", response.data);
-
-                if (response.data.content) {
-                    setProducts(response.data.content);
-                    setTotalPages(response.data.totalPages || 1);
-                } else if (Array.isArray(response.data)) {
-                    setProducts(response.data);
+    // 🟢 Hàm gọi API sản phẩm theo Category & Pagination
+    const fetchProducts = async () => {
+        setLoading(true);
+        try {
+            const response = await axios.get("http://localhost:8080/api/products", {
+                params: {
+                    page: currentPage,
+                    size: pageSize,
+                    category: category === "all" ? "" : category
+                },
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("jwtToken")}`
                 }
-            } catch (error) {
-                if (isMounted) {
-                    console.error("Error fetching product list:", error);
-                }
-            } finally {
-                if (isMounted) {
-                    setLoading(false);
-                }
+            });
+
+            if (response.data.content) {
+                setProducts(response.data.content);
+                setTotalPages(response.data.totalPages || 1);
+            } else if (Array.isArray(response.data)) {
+                setProducts(response.data);
             }
-        };
+        } catch (error) {
+            console.error("Lỗi tải sản phẩm:", error);
+            setProducts([]);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-        loadProducts();
-
-        return () => {
-            isMounted = false;
-        };
-    }, [currentPage, pageSize, category, searchKeyword]); // 🟢 Thêm searchKeyword vào dependency
-
+    // 🟢 Hàm gọi API Semantic Search
     const semanticSearch = async () => {
+        setLoading(true);
         try {
             const response = await axios.get("http://localhost:8080/api/products/semantic", {
                 params: {
@@ -96,7 +83,7 @@ function ProductsPage() {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("jwtToken")}`
                 }
-            })
+            });
             if (response.data.content) {
                 setProducts(response.data.content);
                 setTotalPages(response.data.totalPages || 1);
@@ -104,18 +91,32 @@ function ProductsPage() {
                 setProducts(response.data);
             }
         } catch (error) {
-            console.log(error)
+            console.error("Lỗi tìm kiếm:", error);
+            setProducts([]);
+        } finally {
+            setLoading(false);
         }
-    }
+    };
+
+    // Tự động load dữ liệu mỗi khi Đổi Trang hoặc Đổi Danh Mục (khi không trong chế độ Tìm kiếm)
+    useEffect(() => {
+        if (!searchKeyword) {
+            fetchProducts();
+        } else {
+            semanticSearch();
+        }
+    }, [currentPage, category]);
 
     const selectCategory = (cat: string) => {
+        setSearchKeyword(""); // Clear từ khóa tìm kiếm khi chọn danh mục
+        setSearchQuery("");
         setCategory(cat);
         setCurrentPage(0);
     };
 
-    // 🟢 Hàm xử lý Submit Search (khi bấm nút hoặc ấn Enter)
     const handleSearchSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        if (!searchQuery.trim()) return;
         setSearchKeyword(searchQuery.trim());
         setCurrentPage(0);
         semanticSearch();
@@ -130,16 +131,6 @@ function ProductsPage() {
             ease: "power2.out"
         });
     }, { scope: pageRef });
-
-    useEffect(() => {
-        if (gridRef.current && products.length > 0 && !loading) {
-            gsap.fromTo(
-                gridRef.current.children,
-                { y: 30, opacity: 0 },
-                { y: 0, opacity: 1, duration: 0.4, stagger: 0.05, ease: "power2.out" }
-            );
-        }
-    }, [products, loading]);
 
     const handlePageChange = (newPage: number) => {
         if (newPage >= 0 && newPage < totalPages) {
@@ -167,7 +158,6 @@ function ProductsPage() {
                         Find the best gears and accessories that define your style.
                     </p>
 
-                    {/* 🟢 THANH TÌM KIẾM BO TRÒN (SEARCH BAR) */}
                     <form
                         onSubmit={handleSearchSubmit}
                         style={{
@@ -185,8 +175,8 @@ function ProductsPage() {
                             onChange={(e) => setSearchQuery(e.target.value)}
                             style={{
                                 width: '100%',
-                                padding: '14px 130px 14px 25px', // Padding phải chừa chỗ cho nút Search
-                                borderRadius: '50px', // 🟢 Bo tròn hiện đại
+                                padding: '14px 130px 14px 25px',
+                                borderRadius: '50px',
                                 border: '2px solid #e0e0e0',
                                 outline: 'none',
                                 fontSize: '15px',
@@ -201,9 +191,9 @@ function ProductsPage() {
                             type="submit"
                             style={{
                                 position: 'absolute',
-                                right: '6px', // 🟢 Nút nằm gọn bên trong khung input
+                                right: '6px',
                                 padding: '10px 24px',
-                                borderRadius: '40px', // 🟢 Bo tròn đồng bộ với thanh input
+                                borderRadius: '40px',
                                 border: 'none',
                                 backgroundColor: '#0d6efd',
                                 color: '#ffffff',
@@ -241,29 +231,8 @@ function ProductsPage() {
                         </span>
                     </div>
 
-                    {!loading && products.length > 0 ? (
-                        <div ref={gridRef} style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-                            gap: '25px'
-                        }}>
-                            {products.map(product => (
-                                // eslint-disable-next-line react-hooks/purity
-                                <div key={product.parent_asin || Math.random().toString()}>
-                                    <NavLink to={`/product/${product.parent_asin}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                                        <ProductCard key={product.parent_asin} product={product} />
-                                    </NavLink>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="neon-spinner-container" style={{ textAlign: 'center', padding: '60px 20px', color: '#6c757d' }}>
-                            <div className="neon-spinner"></div>
-                            <p style={{ marginTop: '15px' }}>
-                                {loading ? "Loading data..." : "No products found."}
-                            </p>
-                        </div>
-                    )}
+                    {/* 🟢 Tích hợp ProductList cùng trạng thái loading */}
+                    <ProductList products={products} loading={loading} />
                 </div>
 
                 {totalPages > 1 && (

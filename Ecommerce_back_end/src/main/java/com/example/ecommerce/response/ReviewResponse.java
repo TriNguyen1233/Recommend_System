@@ -1,17 +1,21 @@
 package com.example.ecommerce.response;
-
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Builder;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class ReviewResponse {
-    
+
     private Integer id;
-    private String asin; // Chỉ trả về mã ASIN của sản phẩm, không bê nguyên cả Object Product phức tạp
     private String userId;
+    private String userName;
     private int rating;
     private String content;
+    private String productAsin;
 }

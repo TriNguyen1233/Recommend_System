@@ -12,6 +12,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import com.example.ecommerce.enums.Gender;
 import com.example.ecommerce.enums.UserRole;
 import com.example.ecommerce.enums.UserStatus;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -98,6 +99,7 @@ public class User implements UserDetails{
     private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<Cart> carts = new ArrayList<>();
 
     @Override

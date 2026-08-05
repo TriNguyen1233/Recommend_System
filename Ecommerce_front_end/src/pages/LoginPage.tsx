@@ -1,12 +1,10 @@
 import axios from "axios";
 import "../css/LoginPage.css";
 import { useRef, useState } from "react";
-// 1. Only import Firebase functions
 import { signInWithPopup } from 'firebase/auth';
-// Ensure your firebase.ts file exports googleProvider, facebookProvider, and auth
 import { auth, facebookProvider, googleProvider } from "../firebase/firebase";
 import toast from 'react-hot-toast';
-import { useNavigate } from "react-router-dom"
+import { useNavigate, Link } from "react-router-dom"; // 🌟 Import thêm Link
 
 function LoginPage() {
     const url = "http://localhost:8080/api/users";
@@ -15,42 +13,49 @@ function LoginPage() {
     const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate();
 
-    // Handle normal email/password login
-    const handleSubmit = (e: React.FormEvent) => {
+    // 🌟 Đã chuyển sang async/await & kiểm tra dữ liệu an toàn
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // 🟢 Toast ID for normal login
+        const email = emailRef.current?.value?.trim();
+        const password = passwordRef.current?.value;
+
+        if (!email || !password) {
+            toast.error("Please fill in all required fields!");
+            return;
+        }
+
         const toastId = toast.loading('Logging in...');
+        const loginUrl = `${url}/login`;
 
-        const loginUrl = url + "/login";
-        const requestBody = {
-            email: emailRef.current?.value,
-            password: passwordRef.current?.value
-        };
-
-        axios.post(loginUrl, requestBody).then((response) => {
-            console.log(response.data);
+        try {
+            const response = await axios.post(loginUrl, { email, password });
             const data = response.data;
+            console.log("Login success response:", data);
 
-            // Synchronize local storage for standard login
+            // Lấy userId và token an toàn
+            const userId = data.id || data.userId || data.user?.id || "";
+            const token = data.token || data.jwtToken || "";
+
+            // Đồng bộ lưu trữ LocalStorage
             localStorage.setItem("user", JSON.stringify(data));
-            localStorage.setItem("item", data['id']);
-            localStorage.setItem("jwtToken", data['token']);
+            const role = data.role || data.user?.role || "user";
+            localStorage.setItem("role", role);
 
-            // 🟢 Update toast with English success message
+            localStorage.setItem("item", userId);
+            localStorage.setItem("jwtToken", token);
+
             toast.success('Login successful! 🎉', { id: toastId });
-            navigate("/homepage"); // Added redirection to homepage on form login success
-        }).catch((error) => {
+            navigate("/");
+        } catch (error: any) {
             if (error.response) {
-                console.error("Server error:", error.response.data.message || error.response.statusText);
-                // 🟢 Update toast with English error message
-                toast.error("Login failed: " + (error.response.data.message || "Invalid credentials"), { id: toastId });
+                console.error("Server error:", error.response.data?.message || error.response.statusText);
+                toast.error("Login failed: " + (error.response.data?.message || "Invalid credentials"), { id: toastId });
             } else {
                 console.error("Connection error:", error.message);
-                // 🟢 Update toast with English error message
                 toast.error("Cannot connect to server!", { id: toastId });
             }
-        });
+        }
     };
 
     const handleFirebaseLoginOnBackend = async (idToken: string, provider: string, toastId: string) => {
@@ -66,35 +71,29 @@ function LoginPage() {
 
             if (token) {
                 localStorage.setItem("user", JSON.stringify(user));
-                localStorage.setItem("item", user.id || user.uid || "");
+                localStorage.setItem("item", user.id || user.uid || user.userId || "");
                 localStorage.setItem("jwtToken", token);
 
-                // 🟢 English success message
                 toast.success(`${provider} login successful! 🎉`, { id: toastId });
 
                 setTimeout(() => {
-                    navigate("/homepage");
+                    navigate("/");
                 }, 500);
             } else {
-                // 🟢 English error message
                 toast.error("Authentication failed: No token received from server!", { id: toastId });
             }
         } catch (error: any) {
             console.error(`Error sending ${provider} token to backend:`, error);
-            // 🟢 English error message
             toast.error("System authentication failed!", { id: toastId });
         }
     };
 
     // Facebook Login via Firebase
     const handleFacebookLogin = async () => {
-        // 🟢 Toast ID for Facebook login
         const toastId = toast.loading('Processing Facebook login...');
         try {
             const result = await signInWithPopup(auth, facebookProvider);
             const idToken = await result.user.getIdToken();
-            console.log("Firebase FB Token:", idToken);
-
             await handleFirebaseLoginOnBackend(idToken, "Facebook", toastId);
         } catch (error: any) {
             console.error("Firebase FB error:", error);
@@ -108,13 +107,10 @@ function LoginPage() {
 
     // Google Login via Firebase
     const handleGoogleLogin = async () => {
-        // 🟢 Toast ID for Google login
         const toastId = toast.loading('Processing Google login...');
         try {
             const result = await signInWithPopup(auth, googleProvider);
             const idToken = await result.user.getIdToken();
-            console.log("Firebase Google Token:", idToken);
-
             await handleFirebaseLoginOnBackend(idToken, "Google", toastId);
         } catch (error: any) {
             console.error("Firebase Google error:", error);
@@ -204,8 +200,9 @@ function LoginPage() {
                     </div>
                 </div>
 
+                {/* 🌟 Đã sửa thẻ <a> thành <Link> */}
                 <div className="login-footer">
-                    Don't have an account? <a href={"./signup"} className="login-footer__link">Register here</a>
+                    Don't have an account? <Link to="/signup" className="login-footer__link">Register here</Link>
                 </div>
             </div>
         </div>

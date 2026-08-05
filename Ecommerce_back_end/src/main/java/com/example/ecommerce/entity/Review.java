@@ -1,14 +1,6 @@
 package com.example.ecommerce.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -28,7 +20,7 @@ public class Review {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "review_id") // Nên đặt tên cột rõ ràng trong DB
+    @Column(name = "review_id")
     private Integer id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -36,9 +28,10 @@ public class Review {
     @NotNull(message = "Product reference is required")
     private Product product;
 
-    @Column(name = "user_id", nullable = false)
-    @NotBlank(message = "User ID cannot be blank")
-    private String userId;
+    // ✅ SỬA LẠI THÀNH MỐI QUAN HỆ @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     @Column(name = "rating", nullable = false)
     @Min(value = 1, message = "Rating must be at least 1 star")
@@ -46,6 +39,6 @@ public class Review {
     private int rating;
 
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
-    @NotBlank(message = "Review content cannot be blank") // Sửa từ description thành content
+    @NotBlank(message = "Review content cannot be blank")
     private String content;
 }

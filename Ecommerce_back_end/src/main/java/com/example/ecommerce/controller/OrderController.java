@@ -19,27 +19,30 @@ import com.example.ecommerce.service.OrderService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/orders") // Đổi thành số nhiều "/orders" theo chuẩn RESTful API
+@RequestMapping("/api/orders")
 @RequiredArgsConstructor
 public class OrderController {
 
     private final OrderService orderService;
 
-
     @PostMapping("/checkout/{userId}")
     public ResponseEntity<Order> checkoutCart(@PathVariable String userId) {
         Order order = orderService.cartToOrder(userId);
-        return new ResponseEntity<>(order, HttpStatus.CREATED); // Trả về status 201 Created
+        return new ResponseEntity<>(order, HttpStatus.CREATED);
     }
 
-    
+    @GetMapping
+    public ResponseEntity<List<Order>> getAllOrders() {
+        List<Order> orders = orderService.findAllOrders();
+        return ResponseEntity.ok(orders);
+    }
+
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<Order>> getOrdersByUserId(@PathVariable String userId) {
         List<Order> orders = orderService.findOrderByUserId(userId);
         return ResponseEntity.ok(orders); 
     }
 
-   
     @GetMapping("/user/{userId}/filter")
     public ResponseEntity<List<Order>> getOrdersByUserIdAndStatus(
             @PathVariable String userId, 
@@ -48,7 +51,6 @@ public class OrderController {
         return ResponseEntity.ok(orders);
     }
 
-   
     @PutMapping("/{orderId}/status")
     public ResponseEntity<Order> changeOrderStatus(
             @PathVariable Integer orderId, 
