@@ -1,0 +1,219 @@
+{
+  "phase": "AFTER",
+  "total_predictions": 30,
+  "accuracy": 50.0,
+  "precision": 50.0,
+  "recall": 100.0,
+  "details": [
+    {
+      "user_id": "SIM_USER_APPLE_FAN",
+      "parent_asin": "B001DVZXC0",
+      "ground_truth": false,
+      "prediction": true,
+      "correct": false
+    },
+    {
+      "user_id": "SIM_USER_APPLE_FAN",
+      "parent_asin": "B003IZFCFW",
+      "ground_truth": false,
+      "prediction": true,
+      "correct": false
+    },
+    {
+      "user_id": "SIM_USER_APPLE_FAN",
+      "parent_asin": "B0093JKBYO",
+      "ground_truth": false,
+      "prediction": true,
+      "correct": false
+    },
+    {
+      "user_id": "SIM_USER_APPLE_FAN",
+      "parent_asin": "B00007KDVI",
+      "ground_truth": true,
+      "prediction": true,
+      "correct": true
+    },
+    {
+      "user_id": "SIM_USER_APPLE_FAN",
+      "parent_asin": "B003HC2FHE",
+      "ground_truth": true,
+      "prediction": true,
+      "correct": true
+    },
+    {
+      "user_id": "SIM_USER_APPLE_FAN",
+      "parent_asin": "B00C2MBTK4",
+      "ground_truth": false,
+      "prediction": true,
+      "correct": false
+    },
+    {
+      "user_id": "SIM_USER_BUDGET_GAMER",
+      "parent_asin": "B00L9NZT3A",
+      "ground_truth": true,
+      "prediction": true,
+      "correct": true
+    },
+    {
+      "user_id": "SIM_USER_BUDGET_GAMER",
+      "parent_asin": "B011K4XZQ0",
+      "ground_truth": false,
+      "prediction": true,
+      "correct": false
+    },
+    {
+      "user_id": "SIM_USER_BUDGET_GAMER",
+      "parent_asin": "B0007MXZB2",
+      "ground_truth": false,
+      "prediction": true,
+      "correct": false
+    },
+    {
+      "user_id": "SIM_USER_BUDGET_GAMER",
+      "parent_asin": "B00RY35TES",
+      "ground_truth": false,
+      "prediction": true,
+      "correct": false
+    },
+    {
+      "user_id": "SIM_USER_BUDGET_GAMER",
+      "parent_asin": "B00UVQI8B6",
+      "ground_truth": true,
+      "prediction": true,
+      "correct": true
+    },
+    {
+      "user_id": "SIM_USER_BUDGET_GAMER",
+      "parent_asin": "B00I5SW8MC",
+      "ground_truth": true,
+      "prediction": true,
+      "correct": true
+    },
+    {
+      "user_id": "SIM_USER_PHOTOGRAPHER",
+      "parent_asin": "B01BVM77B0",
+      "ground_truth": true,
+      "prediction": true,
+      "correct": true
+    },
+    {
+      "user_id": "SIM_USER_PHOTOGRAPHER",
+      "parent_asin": "B007TIYYQ2",
+      "ground_truth": false,
+      "prediction": true,
+      "correct": false
+    },
+    {
+      "user_id": "SIM_USER_PHOTOGRAPHER",
+      "parent_asin": "B09JH82GSF",
+      "ground_truth": false,
+      "prediction": true,
+      "correct": false
+    },
+    {
+      "user_id": "SIM_USER_PHOTOGRAPHER",
+      "parent_asin": "B0BL5YHZPC",
+      "ground_truth": true,
+      "prediction": true,
+      "correct": true
+    },
+    {
+      "user_id": "SIM_USER_PHOTOGRAPHER",
+      "parent_asin": "B003CJQ69A",
+      "ground_truth": true,
+      "prediction": true,
+      "correct": true
+    },
+    {
+      "user_id": "SIM_USER_PHOTOGRAPHER",
+      "parent_asin": "B000RT77I2",
+      "ground_truth": true,
+      "prediction": true,
+      "correct": true
+    },
+    {
+      "user_id": "SIM_USER_HOME_AUDIO",
+      "parent_asin": "B008J0Z9TA",
+      "ground_truth": false,
+      "prediction": true,
+      "correct": false
+    },
+    {
+      "user_id": "SIM_USER_HOME_AUDIO",
+      "parent_asin": "B06XKPQ6YZ",
+      "ground_truth": false,
+      "prediction": true,
+      "correct": false
+    },
+    {
+      "user_id": "SIM_USER_HOME_AUDIO",
+      "parent_asin": "B005LZX9GG",
+      "ground_truth": false,
+      "prediction": true,
+      "correct": false
+    },
+    {
+      "user_id": "SIM_USER_HOME_AUDIO",
+      "parent_asin": "B002J9HBIO",
+      "ground_truth": true,
+      "prediction": true,
+      "correct": true
+    },
+    {
+      "user_id": "SIM_USER_HOME_AUDIO",
+      "parent_asin": "B01MRQKP88",
+      "ground_truth": true,
+      "prediction": true,
+      "correct": true
+    },
+    {
+      "user_id": "SIM_USER_HOME_AUDIO",
+      "parent_asin": "B01DN7OH4G",
+      "ground_truth": false,
+      "prediction": true,
+      "correct": false
+    },
+    {
+      "user_id": "SIM_USER_NETWORK_TECH",
+      "parent_asin": "B0C6PRR41P",
+      "ground_truth": true,
+      "prediction": true,
+      "correct": true
+    },
+    {
+      "user_id": "SIM_USER_NETWORK_TECH",
+      "parent_asin": "B0BJP7Q5Y2",
+      "ground_truth": false,
+      "prediction": true,
+      "correct": false
+    },
+    {
+      "user_id": "SIM_USER_NETWORK_TECH",
+      "parent_asin": "B00006JQ06",
+      "ground_truth": false,
+      "prediction": true,
+      "correct": false
+    },
+    {
+      "user_id": "SIM_USER_NETWORK_TECH",
+      "parent_asin": "B08MJ3CSW7",
+      "ground_truth": true,
+      "prediction": true,
+      "correct": true
+    },
+    {
+      "user_id": "SIM_USER_NETWORK_TECH",
+      "parent_asin": "B008I64J9G",
+      "ground_truth": true,
+      "prediction": true,
+      "correct": true
+    },
+    {
+      "user_id": "SIM_USER_NETWORK_TECH",
+      "parent_asin": "B01J1YUH3U",
+      "ground_truth": true,
+      "prediction": true,
+      "correct": true
+    }
+  ]
+}

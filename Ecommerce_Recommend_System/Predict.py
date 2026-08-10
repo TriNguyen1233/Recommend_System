@@ -28,10 +28,18 @@ class implement_recommend:
             'main_category_code':  joblib.load(os.path.join(encoding_dir, 'main_category_encoder.pkl')),
         }
     def build_model(self):
-        checkpoint = torch.load('./content/weights/best_model_v2.pth', map_location=torch.device('cpu'),weights_only=False)
+        checkpoint = torch.load('./content/weights/best_model_v2.pth', map_location=torch.device('cpu'), weights_only=False)
+        state_dict = checkpoint['model_state_dict']
 
         # Khởi tạo model với đúng vocab size từ checkpoint
-        edge_index,edge_weight=self.edge_index_weight()
+        edge_index, edge_weight = self.edge_index_weight()
+        
+        # Nếu checkpoint có edge_index và edge_weight trong state_dict (từ update_graph), dùng shape đó
+        if 'edge_index' in state_dict:
+            edge_index = state_dict['edge_index']
+        if 'edge_weight' in state_dict:
+            edge_weight = state_dict['edge_weight']
+
         self.model = Neural_Network(
             num_users        = checkpoint['num_users'],
             num_items        = checkpoint['num_items'],
@@ -46,7 +54,7 @@ class implement_recommend:
             edge_weight=edge_weight,
         )
 
-        self.model.load_state_dict(checkpoint['model_state_dict'])
+        self.model.load_state_dict(state_dict)
 
     def edge_index_weight(self):
         num_users         = int(self.Product_Rating_Data['user_code'].max() + 1)
@@ -74,16 +82,49 @@ class implement_recommend:
         )
         return  edge_index,edge_weight
     
+    def _cold_start_predict(self, parent_asin):
+        """
+        Popularity-based fallback cho người dùng mới 100% chưa có trong encoder.
+        Dự đoán dựa trên độ phổ biến của sản phẩm (average_rating + rating_number).
+        
+        Returns:
+            bool: True nếu sản phẩm đáng gợi ý, False nếu không
+        """
+        product_info = self.Product_Data[self.Product_Data['parent_asin'] == parent_asin]
+        
+        if product_info.empty:
+            print(f"  [COLD START] Sản phẩm {parent_asin} không tìm thấy → False")
+            return False
+        
+        row = product_info.iloc[0]
+        avg_rating = float(row.get('average_rating', 0))
+        rating_num = float(row.get('rating_number', 0))
+        
+        # Score = 70% dựa trên rating trung bình + 30% dựa trên số lượt đánh giá
+        rating_score = avg_rating / 5.0
+        popularity_score = min(rating_num, 1000) / 1000.0
+        score = rating_score * 0.7 + popularity_score * 0.3
+        
+        is_recommended = score >= 0.5
+        
+        print(f"\n=========================================")
+        print(f" [COLD START] Dự đoán cho Sản phẩm '{parent_asin}':")
+        print(f" Avg Rating: {avg_rating:.1f} | Lượt đánh giá: {rating_num:.0f}")
+        print(f" Popularity Score: {score:.4f} → {'GỢI Ý ✅' if is_recommended else 'KHÔNG ❌'}")
+        print(f"=========================================\n")
+        
+        return is_recommended
+
     def predict(self, user_id, parent_asin):
         encoders = self.load_encoders()
         user_encoder = encoders['user']
 
-        # Fix 4: đúng label UNKNOWN
-        if user_id in user_encoder.classes_:
-            user_id_encoded = int(user_encoder.transform([user_id])[0])
-        else:
-            print(f"User mới: {user_id} → dùng UNKNOWN")
-            user_id_encoded = int(user_encoder.transform(['UNKNOWN'])[0])
+        # Kiểm tra user mới: nếu chưa có trong encoder → Cold Start fallback
+        if user_id not in user_encoder.classes_:
+            print(f"[COLD START] User mới: {user_id} → Fallback Popularity-based")
+            return self._cold_start_predict(parent_asin)
+        
+        user_id_encoded = int(user_encoder.transform([user_id])[0])
 
         checkpoint = torch.load(
             './content/weights/best_model_v2.pth',
