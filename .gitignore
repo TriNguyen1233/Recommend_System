@@ -1,0 +1,16 @@
+# Ignore Firebase & Secret Keys
+*.json
+!package.json
+!tsconfig*.json
+!eslint.config.json
+
+# Ignore env & properties secrets
+.env
+*.pem
+*.key
+
+# Ignore Python caches & weights backups
+__pycache__/
+*.pth
+!best_model.pth
+!best_model_v2.pth
