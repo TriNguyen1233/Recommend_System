@@ -80,6 +80,18 @@ class CheckpointManager:
             'timestamp': time.time(),
             'model_state_dict': model.state_dict(),
             'metrics': metrics,
+<<<<<<< HEAD
+            # Lưu vocab sizes trực tiếp từ model layers để luôn chính xác 100%
+            'num_users': model.user_embedding.num_embeddings,
+            'num_items': model.item_embedding.num_embeddings,
+            'num_brands': model.brand_embedding.num_embeddings,
+            'num_categories': model.category_emb.num_embeddings,
+            'num_main_cats': model.main_category_emb.num_embeddings,
+            'num_colors': model.color_embedding.num_embeddings,
+            'num_stores': model.store_embedding.num_embeddings,
+            'num_parent_asins': model.parent_asin_embedding.num_embeddings,
+            'num_countries': model.country_embedding.num_embeddings,
+=======
             # Lưu vocab sizes để rebuild model khi load
             'num_users': new_vocab_sizes.get('num_users', 0),
             'num_items': new_vocab_sizes.get('num_items', 0),
@@ -90,6 +102,7 @@ class CheckpointManager:
             'num_stores': new_vocab_sizes.get('num_stores', 0),
             'num_parent_asins': new_vocab_sizes.get('num_parent_asins', 0),
             'num_countries': new_vocab_sizes.get('num_countries', 0),
+>>>>>>> upstream/main
         }
         
         torch.save(checkpoint, filepath)
