@@ -1,6 +1,5 @@
 package com.example.ecommerce.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,7 +19,7 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/cart")
 @RequiredArgsConstructor
 public class CartController {
-    @Autowired
+
     private final CartService cartService;
 
     @GetMapping
@@ -29,10 +28,12 @@ public class CartController {
         return ResponseEntity.ok(cart);
     }
 
-    /**
-     * 2. Thêm một sản phẩm vào giỏ hàng.
-     * Endpoint: POST /api/cart/add?userId=...&asin=...&quantity=...
-     */
+    @GetMapping("/count")
+    public ResponseEntity<Integer> getItemNumber(@RequestParam String userId) {
+        int itemNumber = cartService.getItemNumber(userId);
+        return ResponseEntity.ok(itemNumber);
+    }
+
     @PostMapping("/add")
     public ResponseEntity<Cart> addProductToCart(
             @RequestParam String userId,
@@ -42,7 +43,6 @@ public class CartController {
         return ResponseEntity.ok(updatedCart);
     }
 
-    
     @PutMapping("/update")
     public ResponseEntity<Cart> updateProductQuantity(
             @RequestParam String userId,
@@ -52,12 +52,12 @@ public class CartController {
         return ResponseEntity.ok(updatedCart);
     }
 
-
-    @DeleteMapping("/remove/{asin}")
+    // FIX: Đổi từ {asin} (String) thành {cartItemId} (int)
+    @DeleteMapping("/remove/{cartItemId}")
     public ResponseEntity<Cart> removeProductFromCart(
             @RequestParam String userId,
-            @PathVariable String asin) {
-        Cart updatedCart = cartService.removeProductFromCart(userId, asin);
+            @PathVariable int cartItemId) {
+        Cart updatedCart = cartService.removeProductFromCart(userId, cartItemId);
         return ResponseEntity.ok(updatedCart);
     }
 

@@ -1,39 +1,89 @@
-/* Container bọc ngoài để căn giữa spinner (nếu cần) */
-.neon-spinner-container {
+/* Container hiển thị lưới danh sách */
+.product-list-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 25px;
+}
+
+/* Khung Card Neon Skeleton khi đang Loading */
+.neon-skeleton-card {
+    background: #0d1117;
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid rgba(0, 242, 254, 0.2);
+    box-shadow: 0 0 10px rgba(0, 242, 254, 0.1);
     display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 200px;
-    background-color: #0b0b1a; /* Màu nền tối giúp hiệu ứng neon nổi bật hơn */
+    flex-direction: column;
+    gap: 12px;
+    position: relative;
+    overflow: hidden;
 }
 
-/* Khối Spinner chính */
-.neon-spinner {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    
-    /* Tạo viền mờ toàn bộ và một viền màu neon nổi bật */
-    border: 4px solid rgba(0, 242, 254, 0.1);
-    border-top: 4px solid #00f2fe; 
-    border-right: 4px solid #00f2fe; /* Giúp vòng cung neon dài ra một chút */
-
-    /* Tạo hiệu ứng phát sáng (Neon Glow) */
-    box-shadow: 0 0 10px #00f2fe,
-                0 0 20px rgba(0, 242, 254, 0.5),
-                inset 0 0 10px rgba(0, 242, 254, 0.3);
-
-    /* Kích hoạt hiệu ứng xoay vô hạn */
-    animation: neon-spin 1s linear infinite;
+/* Cấu trúc phần tử bên trong Card Skeleton */
+.neon-skeleton-img {
+    width: 100%;
+    height: 180px;
+    border-radius: 8px;
+    background: #161b22;
 }
 
-@keyframes neon-spin {
-    0% {
-        transform: rotate(0deg);
-        filter: hue-rotate(0deg); 
-    }
+.neon-skeleton-line {
+    height: 14px;
+    border-radius: 4px;
+    background: #161b22;
+}
+
+.neon-skeleton-line.short {
+    width: 40%;
+}
+
+.neon-skeleton-line.long {
+    width: 85%;
+}
+
+.neon-skeleton-line.price {
+    width: 60%;
+    height: 20px;
+    margin-top: 8px;
+}
+
+/* Dải sáng Neon chuyển động (Shimmer effect) */
+.neon-skeleton-card::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg,
+            transparent 0%,
+            rgba(0, 242, 254, 0.2) 50%,
+            transparent 100%);
+    animation: neon-shimmer 1.5s infinite;
+}
+
+@keyframes neon-shimmer {
     100% {
-        transform: rotate(360deg);
-        filter: hue-rotate(360deg); /* Vòng xoay sẽ tự động đổi màu liên tục cầu vồng */
+        transform: translateX(100%);
     }
+}
+
+.no-products-container {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    color: #6c757d;
+}
+
+
+.product-card-wrapper {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transform-style: preserve-3d;
+    background-color: white;
+    will-change: transform, opacity;
+
+    border-radius: 12px;
+    overflow: hidden;
 }

@@ -1,6 +1,9 @@
 package com.example.ecommerce.request;
 
+import java.math.BigDecimal;
+
 import com.example.ecommerce.enums.ProductStatus;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -26,7 +29,7 @@ public class ProductRequest {
     private String description;
 
     @PositiveOrZero(message = "Price must be greater than or equal to 0")
-    private float price;
+    private BigDecimal price;
 
     private String image;
 

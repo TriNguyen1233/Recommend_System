@@ -1,5 +1,6 @@
 package com.example.ecommerce.response;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import com.example.ecommerce.enums.ProductStatus;
@@ -18,7 +19,7 @@ public class ProductResponse {
     private String asin;
     private String title;
     private String description;
-    private float price;
+    private BigDecimal price;
     private String image;
     private int stockQuantity;
     private int soldQuantity;

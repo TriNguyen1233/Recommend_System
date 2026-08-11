@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import com.example.ecommerce.enums.CartStatus;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -20,12 +21,14 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "carts")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class Cart {
@@ -35,12 +38,12 @@ public class Cart {
     @Column(name = "cart_id")
     private int Id;
 
-
-    @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private List<CartItem> cartItems;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", referencedColumnName = "user_id", nullable = false)
+    @JsonIgnore
     private User user;
 
     @Column(name = "created_at", updatable = false)
@@ -51,8 +54,8 @@ public class Cart {
 
     // Changed float to BigDecimal to prevent monetary rounding issues
     @Column(name = "total_price")
-    private BigDecimal totalPrice; 
-    
+    private BigDecimal totalPrice;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private CartStatus status;

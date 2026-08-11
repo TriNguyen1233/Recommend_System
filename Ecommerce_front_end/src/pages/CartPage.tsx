@@ -3,105 +3,120 @@ import { NavLink } from "react-router-dom";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 import axios from "axios";
+import toast, { Toaster } from 'react-hot-toast';
 
 import Header from "../components/Header.tsx";
 import "../css/App.css";
 
-// Interface định nghĩa phần tử trong giỏ hàng
+const toastWarn = (message: string) => {
+    toast(message, {
+        icon: '⚠️',
+        style: {
+            border: '1px solid #ffc107',
+            padding: '12px',
+            color: '#856404',
+            backgroundColor: '#fff3cd',
+        },
+    });
+};
+
+interface Product {
+    asin?: string;
+    title?: string;
+    price?: number | string;
+    image?: string;
+    description?: string;
+}
+
 interface CartItem {
-    id: string | number;
+    id?: number;
+    cartItemId?: number;
+    asin?: string;
     parent_asin?: string;
     title?: string;
     price?: number | string;
     image_url?: string;
     quantity: number;
+    product?: Product;
 }
 
-// -------------------------------------------------------------
-// DATA SEED (MOCK DATA)
-// -------------------------------------------------------------
-const MOCK_CART_SEED: CartItem[] = [
-    {
-        id: 101,
-        parent_asin: "B08N5WRWNW",
-        title: "Sony WH-1000XM4 Wireless Noise Cancelling Headphones",
-        price: 348.00,
-        image_url: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80",
-        quantity: 1
-    },
-    {
-        id: 102,
-        parent_asin: "B07X6C9RMF",
-        title: "Logitech MX Master 3S Wireless Performance Mouse",
-        price: 99.99,
-        image_url: "https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?w=500&q=80",
-        quantity: 2
-    },
-    {
-        id: 103,
-        parent_asin: "B0912ABCDE",
-        title: "Keychron K2 Wireless Mechanical Keyboard (RGB)",
-        price: 89.90,
-        image_url: "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500&q=80",
-        quantity: 1
-    }
-];
+// Helper giúp trích xuất danh sách cart items an toàn từ mọi kiểu Response Backend
+const parseCartResponse = (data: any): CartItem[] | null => {
+    if (!data) return null;
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data.cartItems)) return data.cartItems;
+    if (Array.isArray(data.items)) return data.items;
+    return null;
+};
 
 function CartPage() {
     const pageRef = useRef<HTMLDivElement | null>(null);
     const cartListRef = useRef<HTMLDivElement | null>(null);
 
-    // States cho dữ liệu API & Loading
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
+    const [isCheckoutLoading, setIsCheckoutLoading] = useState<boolean>(false);
 
-    // 1. Fetch danh sách giỏ hàng từ API Spring Boot (Fallback về Mock Data nếu lỗi)
-    useEffect(() => {
-        let isMounted = true;
-
-        const fetchCart = async () => {
-            try {
-                setLoading(true);
-                const response = await axios.get("http://localhost:8080/api/cart", {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem("jwtToken")}`
-                    }
-                });
-
-                if (!isMounted) return;
-
-                console.log("Cart response data:", response.data);
-
-                // Xử lý dữ liệu giỏ hàng trả về từ Backend
-                if (Array.isArray(response.data) && response.data.length > 0) {
-                    setCartItems(response.data);
-                } else if (response.data.items && response.data.items.length > 0) {
-                    setCartItems(response.data.items);
-                } else {
-                    // Nếu backend trả về mảng rỗng -> Dùng seed data để test
-                    setCartItems(MOCK_CART_SEED);
-                }
-            } catch (error) {
-                if (isMounted) {
-                    console.warn("Backend unavailable. Using Mock Data Seed instead.", error);
-                    // Khi API lỗi hoặc chưa mở Backend, tự động dùng mock data
-                    setCartItems(MOCK_CART_SEED);
-                }
-            } finally {
-                if (isMounted) {
-                    setLoading(false);
-                }
+    // Lấy userId và token tiện ích
+    const getAuthData = () => {
+        const token = localStorage.getItem("jwtToken");
+        let userId = '';
+        try {
+            const storedUser = localStorage.getItem('user');
+            if (storedUser) {
+                const parsedUser = JSON.parse(storedUser);
+                userId = parsedUser?.userId || parsedUser?.id || parsedUser?._id || '';
             }
-        };
+        } catch (error) {
+            console.error("Error parsing user:", error);
+        }
+        return { token, userId };
+    };
 
+    // Ép kiểu giá tiền về dạng number an toàn
+    const safePrice = (val?: number | string): number => {
+        if (typeof val === 'number') return isNaN(val) ? 0 : val;
+        if (typeof val === 'string') {
+            const parsed = parseFloat(val.replace('$', ''));
+            return isNaN(parsed) ? 0 : parsed;
+        }
+        return 0;
+    };
+
+    // 1. FETCH CART DATA
+    const fetchCart = async () => {
+        try {
+            setLoading(true);
+            const { token, userId } = getAuthData();
+
+            if (!userId) {
+                toastWarn("Not logged in!");
+                setCartItems([]);
+                return;
+            }
+
+            const response = await axios.get("http://localhost:8080/api/cart", {
+                params: { userId },
+                headers: { Authorization: token ? `Bearer ${token}` : '' }
+            });
+
+            const items = parseCartResponse(response.data) || [];
+            console.log("Cart Items:", items);
+            setCartItems(items);
+        } catch (error: any) {
+            console.error("Error fetching cart:", error);
+            const errMsg = error.response?.data?.message || "Cannot connect to server.";
+            toastWarn(errMsg);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
         fetchCart();
-
-        return () => {
-            isMounted = false;
-        };
     }, []);
 
-    // 2. Hiệu ứng GSAP khi load giao diện lần đầu
+    // GSAP Animations cho Header
     useGSAP(() => {
         gsap.from(".header-animate", {
             y: -20,
@@ -112,7 +127,7 @@ function CartPage() {
         });
     }, { scope: pageRef });
 
-    // 3. Hiệu ứng GSAP xuất hiện danh sách giỏ hàng khi load xong
+    // GSAP Animations cho danh sách sản phẩm
     useEffect(() => {
         if (cartListRef.current && cartItems.length > 0 && !loading) {
             gsap.fromTo(
@@ -121,58 +136,163 @@ function CartPage() {
                 { y: 0, opacity: 1, duration: 0.4, stagger: 0.08, ease: "power2.out" }
             );
         }
-    }, [cartItems, loading]);
+    }, [cartItems.length, loading]);
 
-    // Thao tác cập nhật số lượng sản phẩm
-    const handleQuantityChange = async (itemId: string | number, newQuantity: number) => {
-        if (newQuantity <= 0) return;
+    // 2. XỬ LÝ THAY ĐỔI SỐ LƯỢNG
+    const handleQuantityChange = async (item: CartItem, newQuantity: number) => {
+        if (newQuantity <= 0) {
+            handleRemoveItem(item);
+            return;
+        }
 
-        // Cập nhật State UI lập tức
+        const itemAsin = item.asin || item.product?.asin || item.parent_asin;
+        if (!itemAsin) {
+            toast.error("Invalid product identifier!");
+            return;
+        }
+
+        const { token, userId } = getAuthData();
+        if (!userId) {
+            toast.error("You are not logged in!");
+            return;
+        }
+
+        const previousItems = [...cartItems];
+
+        // Optimistic UI update
         setCartItems(prev =>
-            prev.map(item => item.id === itemId ? { ...item, quantity: newQuantity } : item)
+            prev.map(i => {
+                const currentAsin = i.asin || i.product?.asin || i.parent_asin;
+                return currentAsin === itemAsin ? { ...i, quantity: newQuantity } : i;
+            })
         );
 
         try {
-            await axios.put(`http://localhost:8080/api/cart/items/${itemId}`, 
-                { quantity: newQuantity },
-                {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem("jwtToken")}`
-                    }
-                }
-            );
-        } catch (error) {
-            console.error("Error updating item quantity (UI updated locally):", error);
-        }
-    };
-
-    // Thao tác xóa sản phẩm khỏi giỏ hàng
-    const handleRemoveItem = async (itemId: string | number) => {
-        // Cập nhật State UI loại bỏ item ngay
-        setCartItems(prev => prev.filter(item => item.id !== itemId));
-
-        try {
-            await axios.delete(`http://localhost:8080/api/cart/items/${itemId}`, {
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem("jwtToken")}`
+            const response = await axios.put("http://localhost:8080/api/cart/update", null, {
+                params: {
+                    userId: userId,
+                    asin: itemAsin,
+                    quantity: newQuantity
+                },
+                headers: { 
+                    Authorization: token ? `Bearer ${token}` : '' 
                 }
             });
-        } catch (error) {
-            console.error("Error removing cart item (UI updated locally):", error);
+
+            const updatedItems = parseCartResponse(response.data);
+            if (updatedItems) {
+                setCartItems(updatedItems);
+            }
+
+            toast.success("Quantity updated!");
+        } catch (error: any) {
+            console.error("Failed to update quantity:", error);
+            setCartItems(previousItems);
+            const errMsg = error.response?.data?.message || "Failed to sync with server.";
+            toast.error(`Update failed: ${errMsg}`);
         }
     };
 
-    // Tính toán tổng tiền
+    // 3. XỬ LÝ XÓA SẢN PHẨM BẰNG cartItemId HOẶC id
+    const handleRemoveItem = async (item: CartItem) => {
+        const cartItemId = item.id || item.cartItemId;
+        if (!cartItemId) {
+            toast.error("Invalid cart item ID!");
+            return;
+        }
+
+        const { token, userId } = getAuthData();
+        if (!userId) {
+            toast.error("You are not logged in!");
+            return;
+        }
+
+        const previousItems = [...cartItems];
+
+        setCartItems(prev => prev.filter(i => (i.id || i.cartItemId) !== cartItemId));
+
+        try {
+            const response = await axios.delete(`http://localhost:8080/api/cart/remove/${cartItemId}`, {
+                params: { userId: userId },
+                headers: { 
+                    Authorization: token ? `Bearer ${token}` : '' 
+                }
+            });
+
+            const updatedItems = parseCartResponse(response.data);
+            if (updatedItems) {
+                setCartItems(updatedItems);
+            }
+
+            toast.success("Item removed from cart!");
+        } catch (error: any) {
+            console.error("Failed to remove item:", error);
+            setCartItems(previousItems);
+            const errMsg = error.response?.data?.message || "Failed to remove item on server.";
+            toast.error(`Remove failed: ${errMsg}`);
+        }
+    };
+
+    // Tính toán tổng số tiền
     const subtotal = cartItems.reduce((acc, item) => {
-        const itemPrice = typeof item.price === "number" ? item.price : parseFloat(item.price || "0");
-        return acc + itemPrice * item.quantity;
+        const unitPrice = safePrice(item.product?.price ?? item.price);
+        return acc + (unitPrice * item.quantity);
     }, 0);
 
     const shippingFee = cartItems.length > 0 ? 15.00 : 0;
     const totalAmount = subtotal + shippingFee;
 
+    // 4. XỬ LÝ THANH TOÁN VNPAY
+    const handleCheckout = async () => {
+        if (cartItems.length === 0) {
+            toastWarn("Your cart is empty!");
+            return;
+        }
+
+        const { token, userId } = getAuthData();
+        if (!userId) {
+            toastWarn("Please log in to proceed with payment!");
+            return;
+        }
+
+        try {
+            setIsCheckoutLoading(true);
+
+            // Tạo orderId duy nhất dựa theo mã timestamp
+            const orderId = `ORDER_${Date.now()}`;
+            
+            // Chuyển đổi số tiền thành số nguyên cho VNPay (Quy đổi USD ra VND nếu dùng USD, hoặc giữ nguyên số nguyên)
+            const paymentAmount = Math.round(totalAmount * 25000); // 1 USD = 25,000 VND (Thay đổi tỷ giá tùy hệ thống)
+
+            const response = await axios.get("http://localhost:8080/api/payments/create", {
+                params: {
+                    orderId: orderId,
+                    amount: paymentAmount
+                },
+                headers: {
+                    Authorization: token ? `Bearer ${token}` : ''
+                }
+            });
+
+            if (response.data && response.data.paymentUrl) {
+                toast.success("Redirecting to VNPay payment gateway...");
+                window.location.href = response.data.paymentUrl;
+            } else {
+                toast.error("Failed to get payment URL.");
+            }
+        } catch (error: any) {
+            console.error("Checkout payment error:", error);
+            const errMsg = error.response?.data?.message || "Could not initialize payment.";
+            toast.error(`Checkout error: ${errMsg}`);
+        } finally {
+            setIsCheckoutLoading(false);
+        }
+    };
+
     return (
         <div ref={pageRef} style={{ backgroundColor: '#ffffff', minHeight: '100vh', paddingBottom: '50px' }}>
+            <Toaster position="top-right" reverseOrder={false} />
+
             <Header />
 
             {/* BREADCRUMB */}
@@ -183,7 +303,6 @@ function CartPage() {
 
             <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '30px 20px' }}>
 
-                {/* TIÊU ĐỀ TRANG */}
                 <div className="header-animate" style={{ textAlign: 'center', marginBottom: '30px' }}>
                     <h1 style={{ fontSize: '32px', fontWeight: '800', color: '#111', marginBottom: '10px' }}>
                         Your Cart Summary
@@ -199,7 +318,6 @@ function CartPage() {
                         <p style={{ marginTop: '15px' }}>Loading cart items...</p>
                     </div>
                 ) : cartItems.length === 0 ? (
-                    /* EMPTY CART STATE */
                     <div style={{
                         textAlign: 'center',
                         padding: '60px 20px',
@@ -223,7 +341,6 @@ function CartPage() {
                         </NavLink>
                     </div>
                 ) : (
-                    /* BỐ CỤC GIỎ HÀNG VÀ THANH TOÁN */
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '30px' }}>
 
                         {/* DANH SÁCH SẢN PHẨM */}
@@ -241,11 +358,16 @@ function CartPage() {
                             </div>
 
                             <div ref={cartListRef} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                {cartItems.map(item => {
-                                    const unitPrice = typeof item.price === "number" ? item.price : parseFloat(item.price || "0");
-                                    
+                                {cartItems.map((item, index) => {
+                                    const title = item.product?.title || item.title || "Product Item";
+                                    const image = item.product?.image || item.image_url || "https://via.placeholder.com/80";
+                                    const asin = item.product?.asin || item.asin || item.parent_asin || "";
+                                    const itemId = item.id || item.cartItemId;
+                                    const unitPrice = safePrice(item.product?.price ?? item.price);
+                                    const itemTotal = unitPrice * item.quantity;
+
                                     return (
-                                        <div key={item.id} style={{
+                                        <div key={itemId || asin || index} style={{
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'space-between',
@@ -254,16 +376,16 @@ function CartPage() {
                                             borderRadius: '8px',
                                             backgroundColor: '#fafafa'
                                         }}>
-                                            {/* Ảnh và thông tin */}
+                                            {/* Ảnh & Tên sản phẩm */}
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '15px', width: '50%' }}>
-                                                <img 
-                                                    src={item.image_url || "https://via.placeholder.com/80"} 
-                                                    alt={item.title} 
-                                                    style={{ width: '70px', height: '70px', objectFit: 'cover', borderRadius: '6px' }} 
+                                                <img
+                                                    src={image}
+                                                    alt={title}
+                                                    style={{ width: '70px', height: '70px', objectFit: 'cover', borderRadius: '6px' }}
                                                 />
                                                 <div>
-                                                    <NavLink to={`/product/${item.parent_asin}`} style={{ textDecoration: 'none', color: '#111', fontWeight: 'bold', fontSize: '15px' }}>
-                                                        {item.title || "Product Item"}
+                                                    <NavLink to={asin ? `/products/${asin}` : "#"} style={{ textDecoration: 'none', color: '#111', fontWeight: 'bold', fontSize: '15px' }}>
+                                                        {title}
                                                     </NavLink>
                                                     <div style={{ color: '#6c757d', fontSize: '14px', marginTop: '4px' }}>
                                                         ${unitPrice.toFixed(2)}
@@ -271,10 +393,10 @@ function CartPage() {
                                                 </div>
                                             </div>
 
-                                            {/* Số lượng */}
+                                            {/* Bộ điều chỉnh số lượng */}
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                 <button
-                                                    onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
+                                                    onClick={() => handleQuantityChange(item, item.quantity - 1)}
                                                     style={{
                                                         width: '28px',
                                                         height: '28px',
@@ -291,7 +413,7 @@ function CartPage() {
                                                     {item.quantity}
                                                 </span>
                                                 <button
-                                                    onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
+                                                    onClick={() => handleQuantityChange(item, item.quantity + 1)}
                                                     style={{
                                                         width: '28px',
                                                         height: '28px',
@@ -306,14 +428,14 @@ function CartPage() {
                                                 </button>
                                             </div>
 
-                                            {/* Tổng tiền thành phần */}
+                                            {/* Thành tiền */}
                                             <div style={{ fontWeight: '800', color: '#111', minWidth: '80px', textAlign: 'right' }}>
-                                                ${(unitPrice * item.quantity).toFixed(2)}
+                                                ${itemTotal.toFixed(2)}
                                             </div>
 
-                                            {/* Nút xóa */}
+                                            {/* Nút Xóa */}
                                             <button
-                                                onClick={() => handleRemoveItem(item.id)}
+                                                onClick={() => handleRemoveItem(item)}
                                                 style={{
                                                     background: 'transparent',
                                                     border: 'none',
@@ -333,7 +455,7 @@ function CartPage() {
                             </div>
                         </div>
 
-                        {/* BẢNG TÓM TẮT ĐƠN HÀNG (SUMMARY) */}
+                        {/* TỔNG QUAN ĐƠN HÀNG */}
                         <div style={{
                             background: '#ffffff',
                             padding: '25px',
@@ -363,19 +485,23 @@ function CartPage() {
                                 <strong style={{ color: '#0d6efd' }}>${totalAmount.toFixed(2)}</strong>
                             </div>
 
-                            <button style={{
-                                width: '100%',
-                                padding: '12px',
-                                borderRadius: '6px',
-                                border: 'none',
-                                backgroundColor: '#0d6efd',
-                                color: '#ffffff',
-                                fontSize: '16px',
-                                fontWeight: 'bold',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s ease'
-                            }}>
-                                Checkout
+                            <button
+                                onClick={handleCheckout}
+                                disabled={isCheckoutLoading}
+                                style={{
+                                    width: '100%',
+                                    padding: '12px',
+                                    borderRadius: '6px',
+                                    border: 'none',
+                                    backgroundColor: isCheckoutLoading ? '#6c757d' : '#0d6efd',
+                                    color: '#ffffff',
+                                    fontSize: '16px',
+                                    fontWeight: 'bold',
+                                    cursor: isCheckoutLoading ? 'not-allowed' : 'pointer',
+                                    transition: 'all 0.2s ease'
+                                }}
+                            >
+                                {isCheckoutLoading ? 'Processing Payment...' : 'Checkout with VNPay'}
                             </button>
                         </div>
 

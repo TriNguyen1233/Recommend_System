@@ -1,0 +1,6 @@
+# Chặn toàn bộ file data CSV nặng
+*.csv
+
+# Chặn file cấu hình bảo mật Firebase
+*.json
+.env

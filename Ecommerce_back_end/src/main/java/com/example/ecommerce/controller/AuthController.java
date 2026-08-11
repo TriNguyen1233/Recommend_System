@@ -20,7 +20,7 @@ import com.google.firebase.auth.FirebaseToken;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "http://localhost:5173") // Đảm bảo khớp với cổng React chạy ở client
+@CrossOrigin(origins = "http://localhost:5173")
 public class AuthController {
 
     @Autowired
@@ -47,7 +47,7 @@ public class AuthController {
 
             User user = userService.processFirebaseUser(uid, email, name, picture);
 
-            String mySystemJwt = jwtTokenProvider.generateToken(email);
+            String mySystemJwt = jwtTokenProvider.generateToken(email, user.getRole());
 
             UserResponse userResponse = mapToUserResponse(user, mySystemJwt);
 

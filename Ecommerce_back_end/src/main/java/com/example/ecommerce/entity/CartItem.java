@@ -1,6 +1,9 @@
 package com.example.ecommerce.entity;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -32,6 +35,7 @@ public class CartItem {
     @Column(name = "cart_item_id")
     private Integer id;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cart_id", referencedColumnName = "cart_id", nullable = false)
     @NotNull(message = "Cart item must belong to a cart")
@@ -51,14 +55,14 @@ public class CartItem {
 
     @Column(name = "price", nullable = false)
     @PositiveOrZero(message = "Price must be greater than or equal to 0")
-    private float price;
+    private BigDecimal price;
 
     @Column(name = "discount", nullable = true)
     @PositiveOrZero(message = "Discount must be greater than or equal to 0")
-    private Float discount;
+    private BigDecimal discount;
 
-    @Column(name = "quantity", nullable = false) // Thêm dấu phẩy hợp lệ
-    @NotNull(message = "Quantity cannot be null") // Đảm bảo số lượng luôn có giá trị
-    @Min(value = 1, message = "Quantity must be at least 1") // Ràng buộc số lượng sản phẩm trong giỏ tối thiểu là 1
+    @Column(name = "quantity", nullable = false) 
+    @NotNull(message = "Quantity cannot be null")
+    @Min(value = 1, message = "Quantity must be at least 1")
     private int quantity;
 }

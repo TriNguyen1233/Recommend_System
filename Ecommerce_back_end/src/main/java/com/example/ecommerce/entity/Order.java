@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.example.ecommerce.enums.OrderStatus;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -23,14 +25,18 @@ import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "orders")
-@Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Getter
+@Setter
+// Tránh lỗi Jackson không serialize được Proxy khi dùng FetchType.LAZY
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Order {
 
     @Id
@@ -38,12 +44,15 @@ public class Order {
     @Column(name = "order_id")
     private Integer id; 
 
+    // 1. Quản lý chiều xuất dữ liệu sang OrderItem
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonManagedReference 
     private List<OrderItem> orderItemList = new ArrayList<>(); 
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     @NotNull(message = "Order must belong to a valid user")
+    @JsonIgnoreProperties({"orders", "password", "hibernateLazyInitializer", "handler"})
     private User user;
 
     @Column(name = "created_at", updatable = false, nullable = false)

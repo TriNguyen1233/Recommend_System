@@ -23,110 +23,331 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class ProductServiceImp implements ProductService {
+
     @Autowired
     private final ProductRepository productRepository;
+
     @Autowired
     private final ProductMapper productMapper;
+
     private final EmbeddingModel embeddingModel;
 
     @Override
     public ProductResponse getProductByAsin(String asin) {
-        // Giả sử findByAsin trả về Product (Entity) hoặc Optional<Product>
-        Product product = productRepository.findByAsin(asin);
-        return productMapper.toProductResponse(product);
-    }
 
-    @Override
-    public List<ProductResponse> getAllProducts(int page, int size, String category) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<Product> productPage;
+        try {
 
-        if (category != null && !category.trim().isEmpty()) {
-            productPage = productRepository.findByCategory(category, pageable);
-        } else {
-            productPage = productRepository.findAll(pageable);
+            if (asin == null || asin.isBlank()) {
+                throw new IllegalArgumentException(
+                        "ASIN cannot be null or empty");
+            }
+
+            Product product = productRepository.findByAsin(asin);
+
+            if (product == null) {
+                throw new RuntimeException(
+                        "Product not found with ASIN: " + asin);
+            }
+
+            return productMapper.toProductResponse(product);
+
+        } catch (IllegalArgumentException e) {
+
+            throw e;
+
+        } catch (Exception e) {
+
+            throw new RuntimeException(
+                    "Failed to get product with ASIN: " + asin,
+                    e);
         }
-
-        return productPage.getContent().stream()
-                .map(productMapper::toProductResponse)
-                .toList();
     }
 
     @Override
-    public ProductResponse createProduct(ProductRequest productRequest) {
-        // Chuyển Request DTO sang Entity để lưu vào DB
-        Product product = productMapper.toProduct(productRequest);
-        Product savedProduct = productRepository.save(product);
-        // Trả về Response DTO
-        return productMapper.toProductResponse(savedProduct);
-    }
+    public List<ProductResponse> getAllProducts(
+            int page,
+            int size,
+            String category) {
 
-    @Override
-    public ProductResponse updateProduct(String asin, ProductRequest productRequest) {
-        // Thay thế .orElseThrow() bằng .orElse(null)
-        Product existingProduct = productRepository.findByAsin(asin);
+        try {
 
-        // Kiểm tra điều kiện if (== null) và throw exception
-        if (existingProduct == null) {
-            throw new RuntimeException("Product not found");
+            if (page < 0) {
+                throw new IllegalArgumentException(
+                        "Page must be greater than or equal to 0");
+            }
+
+            if (size <= 0) {
+                throw new IllegalArgumentException(
+                        "Size must be greater than 0");
+            }
+
+            Pageable pageable = PageRequest.of(page, size);
+
+            Page<Product> productPage;
+
+            if (category != null && !category.trim().isEmpty()) {
+
+                productPage = productRepository.findByCategory(
+                        category,
+                        pageable);
+
+            } else {
+
+                productPage = productRepository.findAll(pageable);
+            }
+
+            return productPage
+                    .getContent()
+                    .stream()
+                    .map(productMapper::toProductResponse)
+                    .toList();
+
+        } catch (IllegalArgumentException e) {
+
+            throw e;
+
+        } catch (Exception e) {
+
+            throw new RuntimeException(
+                    "Failed to get products",
+                    e);
         }
-
-        // Cập nhật thông tin từ request vào existingProduct (hoặc dùng mapper tùy biến)
-        existingProduct.setTitle(productRequest.getTitle());
-        existingProduct.setDescription(productRequest.getDescription());
-        existingProduct.setPrice(productRequest.getPrice());
-        existingProduct.setImage(productRequest.getImage());
-        existingProduct.setStockQuantity(productRequest.getStockQuantity());
-        existingProduct.setStatus(productRequest.getStatus());
-
-        Product updatedProduct = productRepository.save(existingProduct);
-        return productMapper.toProductResponse(updatedProduct);
     }
 
     @Override
-    public ProductResponse changeProductQuantity(String asin, int quantity) {
-        // Thay thế .orElseThrow() bằng .orElse(null)
-        Product product = productRepository.findByAsin(asin);
+    public ProductResponse createProduct(
+            ProductRequest productRequest) {
 
-        // Kiểm tra điều kiện if (== null) và throw exception
-        if (product == null) {
-            throw new RuntimeException("Product not found");
+        try {
+
+            if (productRequest == null) {
+                throw new IllegalArgumentException(
+                        "Product request cannot be null");
+            }
+
+            Product product = productMapper.toProduct(productRequest);
+
+            if (product == null) {
+                throw new RuntimeException(
+                        "Failed to map product request");
+            }
+
+            Product savedProduct = productRepository.save(product);
+
+            return productMapper.toProductResponse(
+                    savedProduct);
+
+        } catch (IllegalArgumentException e) {
+
+            throw e;
+
+        } catch (Exception e) {
+
+            throw new RuntimeException(
+                    "Failed to create product",
+                    e);
         }
+    }
 
-        product.setStockQuantity(product.getStockQuantity() + quantity);
-        Product updatedProduct = productRepository.save(product);
-        return productMapper.toProductResponse(updatedProduct);
+    @Override
+    public ProductResponse updateProduct(
+            String asin,
+            ProductRequest productRequest) {
+
+        try {
+
+            if (asin == null || asin.isBlank()) {
+                throw new IllegalArgumentException(
+                        "ASIN cannot be null or empty");
+            }
+
+            if (productRequest == null) {
+                throw new IllegalArgumentException(
+                        "Product request cannot be null");
+            }
+
+            Product existingProduct = productRepository.findByAsin(asin);
+
+            if (existingProduct == null) {
+                throw new RuntimeException(
+                        "Product not found with ASIN: " + asin);
+            }
+
+            existingProduct.setTitle(
+                    productRequest.getTitle());
+
+            existingProduct.setDescription(
+                    productRequest.getDescription());
+
+            existingProduct.setPrice(
+                    productRequest.getPrice());
+
+            existingProduct.setImage(
+                    productRequest.getImage());
+
+            existingProduct.setStockQuantity(
+                    productRequest.getStockQuantity());
+
+            existingProduct.setStatus(
+                    productRequest.getStatus());
+
+            Product updatedProduct = productRepository.save(existingProduct);
+
+            return productMapper.toProductResponse(
+                    updatedProduct);
+
+        } catch (IllegalArgumentException e) {
+
+            throw e;
+
+        } catch (Exception e) {
+
+            throw new RuntimeException(
+                    "Failed to update product with ASIN: "
+                            + asin,
+                    e);
+        }
+    }
+
+    @Override
+    public ProductResponse changeProductQuantity(
+            String asin,
+            int quantity) {
+
+        try {
+
+            if (asin == null || asin.isBlank()) {
+                throw new IllegalArgumentException(
+                        "ASIN cannot be null or empty");
+            }
+
+            Product product = productRepository.findByAsin(asin);
+
+            if (product == null) {
+                throw new RuntimeException(
+                        "Product not found with ASIN: " + asin);
+            }
+
+            int newQuantity = product.getStockQuantity() + quantity;
+
+            if (newQuantity < 0) {
+                throw new IllegalArgumentException(
+                        "Stock quantity cannot be negative");
+            }
+
+            product.setStockQuantity(newQuantity);
+
+            Product updatedProduct = productRepository.save(product);
+
+            return productMapper.toProductResponse(
+                    updatedProduct);
+
+        } catch (IllegalArgumentException e) {
+
+            throw e;
+
+        } catch (Exception e) {
+
+            throw new RuntimeException(
+                    "Failed to change product quantity for ASIN: "
+                            + asin,
+                    e);
+        }
     }
 
     @Override
     public void deleteProduct(String asin) {
-        // Thay thế .orElseThrow() bằng .orElse(null)
-        Product product = productRepository.findByAsin(asin);
 
-        // Kiểm tra điều kiện if (== null) và throw exception
-        if (product == null) {
-            throw new RuntimeException("Product not found");
+        try {
+
+            if (asin == null || asin.isBlank()) {
+                throw new IllegalArgumentException(
+                        "ASIN cannot be null or empty");
+            }
+
+            Product product = productRepository.findByAsin(asin);
+
+            if (product == null) {
+                throw new RuntimeException(
+                        "Product not found with ASIN: " + asin);
+            }
+
+            productRepository.delete(product);
+
+        } catch (IllegalArgumentException e) {
+
+            throw e;
+
+        } catch (Exception e) {
+
+            throw new RuntimeException(
+                    "Failed to delete product with ASIN: "
+                            + asin,
+                    e);
         }
-
-        productRepository.delete(product);
     }
 
     @Override
-    public Page<ProductResponse> semanticSearch(String search, int page, int size) {
-        float[] vectorArray = embeddingModel.embed(search);
-        String vectorString = Arrays.toString(vectorArray);
+    public Page<ProductResponse> semanticSearch(
+            String search,
+            int page,
+            int size) {
 
-        Pageable pageable = PageRequest.of(page, size);
+        try {
 
-        Page<ProductVectorProjection> projections = productRepository.findSimilarProducts(vectorString, pageable);
+            if (search == null || search.isBlank()) {
+                throw new IllegalArgumentException(
+                        "Search keyword cannot be null or empty");
+            }
 
-        return projections.map(p -> ProductResponse.builder()
-                .asin(p.getParentAsin())
-                .title(p.getTitle())
-                .price(p.getPrice() != null ? p.getPrice().floatValue() : 0f) 
-                .image(p.getImageUrl())
-                .category(p.getCategory())
-                .build());
+            if (page < 0) {
+                throw new IllegalArgumentException(
+                        "Page must be greater than or equal to 0");
+            }
+
+            if (size <= 0) {
+                throw new IllegalArgumentException(
+                        "Size must be greater than 0");
+            }
+
+            float[] vectorArray = embeddingModel.embed(search);
+
+            if (vectorArray == null
+                    || vectorArray.length == 0) {
+
+                throw new RuntimeException(
+                        "Failed to generate embedding");
+            }
+
+            String vectorString = Arrays.toString(vectorArray);
+
+            Pageable pageable = PageRequest.of(page, size);
+
+            Page<ProductVectorProjection> projections = productRepository.findSimilarProducts(
+                    vectorString,
+                    pageable);
+
+            return projections.map(p -> ProductResponse.builder()
+                    .asin(p.getParentAsin())
+                    .title(p.getTitle())
+                    .price(
+                            p.getPrice() != null
+                                    ? p.getPrice().floatValue()
+                                    : 0f)
+                    .image(p.getImageUrl())
+                    .category(p.getCategory())
+                    .build());
+
+        } catch (IllegalArgumentException e) {
+
+            throw e;
+
+        } catch (Exception e) {
+
+            throw new RuntimeException(
+                    "Failed to perform semantic search: "
+                            + search,
+                    e);
+        }
     }
-
 }
