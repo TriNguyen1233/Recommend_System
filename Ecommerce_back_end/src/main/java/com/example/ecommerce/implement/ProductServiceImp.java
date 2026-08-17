@@ -1,5 +1,6 @@
 package com.example.ecommerce.implement;
 
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
 
@@ -327,13 +328,13 @@ public class ProductServiceImp implements ProductService {
                     vectorString,
                     pageable);
 
-            return projections.map(p -> ProductResponse.builder()
+           return projections.map(p -> ProductResponse.builder()
                     .asin(p.getParentAsin())
                     .title(p.getTitle())
                     .price(
                             p.getPrice() != null
-                                    ? p.getPrice().floatValue()
-                                    : 0f)
+                                    ? new BigDecimal(p.getPrice().toString()) 
+                                    : BigDecimal.ZERO)
                     .image(p.getImageUrl())
                     .category(p.getCategory())
                     .build());

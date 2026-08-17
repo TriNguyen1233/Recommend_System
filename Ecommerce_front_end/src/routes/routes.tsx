@@ -18,6 +18,7 @@ import ProductAdminPage from "../pages/admin/ProductAdminPage";
 import UserAdminPage from "../pages/admin/UserAdminPage";
 import OrderAdminPage from "../pages/admin/OrderAdminPage";
 import RequestAdminPage from "../pages/admin/RequestAdminPage"; // 🔥 Import trang RequestAdminPage mới
+import { AiRecProvider } from "../context/AiRecContext";
 
 const Routes = createBrowserRouter([
     {
@@ -26,7 +27,7 @@ const Routes = createBrowserRouter([
         children: [
             {
                 index: true,
-                element: <HomePage />
+                element: <AiRecProvider><HomePage /></AiRecProvider>
             },
             {
                 path: "login",
