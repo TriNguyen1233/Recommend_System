@@ -1,63 +1,46 @@
 """
 Centralized configuration for Incremental Learning Pipeline.
-Tối ưu cho CPU-only execution (no GPU).
+Optimized for CPU-only execution.
 """
 
 INCREMENTAL_CONFIG = {
-    # ════════════════════════════════════════════════════════════
-    # EWC (Elastic Weight Consolidation) - Chống Catastrophic Forgetting
-    # ════════════════════════════════════════════════════════════
-    "ewc_lambda": 5000,                # Hệ số phạt EWC — càng cao càng bảo thủ (giữ kiến thức cũ)
-    "fisher_samples": 2000,            # Số mẫu dùng để ước lượng Fisher Information Matrix
-    "fisher_batch_size": 128,          # Batch size khi tính Fisher (nhỏ hơn vì chạy CPU)
+    # ------------------------------------------------------------
+    # EWC (Elastic Weight Consolidation) - Prevent Catastrophic Forgetting
+    # ------------------------------------------------------------
+    "ewc_lambda": 5000,                # EWC penalty weight - higher means preserving old knowledge
+    "fisher_samples": 2000,            # Number of samples to estimate Fisher Information Matrix
+    "fisher_batch_size": 128,          # Batch size for Fisher estimation (optimized for CPU)
 
-    # ════════════════════════════════════════════════════════════
     # Fine-tuning Hyperparameters (CPU-optimized)
-    # ════════════════════════════════════════════════════════════
-    "fine_tune_lr": 1e-5,              # Learning rate thấp hơn 10x so với full train
-    "fine_tune_epochs": 3,             # Chỉ 3 epochs cho CPU (đủ để hội tụ trên data stream nhỏ)
-    "fine_tune_batch_size": 256,       # Batch size nhỏ hơn cho CPU (tránh OOM)
-    "grad_clip": 0.5,                  # Gradient clipping chặt hơn full train (1.0)
-    "weight_decay": 2e-3,             # Giữ nguyên weight decay từ full train
-    "early_stop_patience": 2,          # Dừng sớm sau 2 epoch không cải thiện
 
-    # ════════════════════════════════════════════════════════════
-    # Quality Gate - Kiểm soát chất lượng model trước khi deploy
-    # ════════════════════════════════════════════════════════════
-    "quality_gate_auc_drop": 0.01,     # Cho phép AUC giảm tối đa 1% so với checkpoint trước
-    "quality_gate_f1_drop": 0.02,      # Cho phép F1 giảm tối đa 2%
-    "validation_split": 0.2,           # 20% new data dùng làm validation
+    "fine_tune_lr": 1e-5,              # Lower learning rate than full training
+    "fine_tune_epochs": 3,             # 3 epochs for fast CPU convergence on new data streams
+    "fine_tune_batch_size": 256,       # Batch size for CPU memory safety
+    "grad_clip": 0.5,                  # Gradient clipping limit
+    "weight_decay": 2e-3,              # Weight decay coefficient
+    "early_stop_patience": 2,          # Early stopping patience
 
-    # ════════════════════════════════════════════════════════════
-    # Trigger Conditions (Hybrid: volume OR time)
-    # ════════════════════════════════════════════════════════════
-    "trigger_min_interactions": 500,   # Kích hoạt khi có >= 500 bản ghi mới
-    "trigger_interval_hours": 24,      # Hoặc kích hoạt mỗi 24 giờ (cái nào đến trước)
-
-    # ════════════════════════════════════════════════════════════
-    # Checkpoint & Rollback Management
-    # ════════════════════════════════════════════════════════════
-    "max_checkpoints_to_keep": 5,      # Giữ tối đa 5 checkpoints gần nhất để rollback
+    # Quality Gate - Control model quality before deployment
+    "quality_gate_auc_drop": 0.01,     # Maximum allowed AUC drop (1%) vs previous checkpoint
+    "quality_gate_f1_drop": 0.02,      # Maximum allowed F1 drop (2%)
+    "validation_split": 0.2,           # 20% validation split for new data
+    "trigger_min_interactions": 500,   # Trigger when >= 500 new interaction records arrive
+    "trigger_interval_hours": 24,      # Trigger interval in hours      
+    "max_checkpoints_to_keep": 5,      # Maximum recent checkpoints to retain for rollback
     "checkpoint_dir": "./content/weights/",
-    "checkpoint_prefix": "incremental_model",  # Tên file: incremental_model_v{N}.pth
+    "checkpoint_prefix": "incremental_model",  # Checkpoint filename pattern: incremental_model_v{N}.pth
     "best_model_path": "./content/weights/best_model_v2.pth",
 
-    # ════════════════════════════════════════════════════════════
     # Data Pipeline
-    # ════════════════════════════════════════════════════════════
     "encoder_dir": "./content/encoder/",
-    "old_data_sample_ratio": 0.1,      # Lấy mẫu 10% dữ liệu cũ để tính Fisher
+    "old_data_sample_ratio": 0.1,      # Sample 10% of old data to compute Fisher Matrix
     "product_rating_csv": "./content/Electronics_Rating(Encoding).csv",
     "product_data_csv": "./content/Electronics_Product(Encoding).csv",
 
-    # ════════════════════════════════════════════════════════════
-    # PostgreSQL Data Source (đọc bản ghi mới)
-    # ════════════════════════════════════════════════════════════
-    "db_table_interactions": "interactions",  # Tên bảng chứa tương tác mới
-    "db_processed_flag_col": "is_trained",    # Cột đánh dấu đã xử lý
-    
-    # ════════════════════════════════════════════════════════════
+    # PostgreSQL Data Source
+    "db_table_interactions": "interactions",  # Table containing new user interactions
+    "db_processed_flag_col": "is_trained",    # Flag column for processed records
     # Logging
-    # ════════════════════════════════════════════════════════════
+
     "metrics_log_path": "./content/weights/incremental_metrics_log.csv",
 }

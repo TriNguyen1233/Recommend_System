@@ -25,7 +25,7 @@ def retrieve_product_vector(title):
     db_port = os.getenv("DB_PORT")
     title_vector=title_embedding(title)
     connection_string = f"dbname={db_name} user={db_user} password={db_password} host={db_host} port={db_port}" 
-    print(f"Đang kết nối tới database: {db_name}...")
+    print(f"Connecting to database: {db_name}...")
     with psycopg.connect(connection_string,autocommit=True) as conn:
          with conn.cursor() as cur:
             retrieve_query = """
@@ -53,7 +53,7 @@ def retrieve_product_vector_with_category(title, category):
     db_port = os.getenv("DB_PORT")
     title_vector=title_embedding(title)
     connection_string = f"dbname={db_name} user={db_user} password={db_password} host={db_host} port={db_port}" 
-    print(f"Đang kết nối tới database: {db_name}...")
+    print(f"Connecting to database: {db_name}...")
     with psycopg.connect(connection_string,autocommit=True) as conn:
          with conn.cursor() as cur:
             retrieve_query = """    

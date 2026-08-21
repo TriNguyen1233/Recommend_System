@@ -85,10 +85,10 @@ class IncrementalDataset(Dataset):
 
 class EWCRegularizer:
     """
-    Elastic Weight Consolidation (EWC) — Chống Catastrophic Forgetting.
+    Elastic Weight Consolidation (EWC) — Prevent Catastrophic Forgetting.
     
-    Nguyên lý: Ước lượng "tầm quan trọng" của mỗi trọng số bằng Fisher Information Matrix.
-    Khi fine-tune, phạt nặng những thay đổi trên trọng số quan trọng.
+    Principle: Estimate the "importance" of each weight using the Fisher Information Matrix.
+    During fine-tuning, penalize changes to important weights.
     
     L_total = L_new_data + λ * Σ F_i * (θ_i - θ*_i)²
     """
@@ -98,10 +98,10 @@ class EWCRegularizer:
         """
         Args:
             model: Neural_Network model đã load checkpoint
-            old_dataloader: DataLoader mẫu từ dữ liệu cũ
+            old_dataloader: Sample DataLoader from existing data
             device: torch device (cpu)
-            num_samples: Số mẫu dùng để ước lượng Fisher
-            ewc_lambda: Hệ số phạt EWC
+            num_samples: Number of samples used to estimate Fisher
+            ewc_lambda: EWC penalty coefficient
         """
         self.ewc_lambda = ewc_lambda or INCREMENTAL_CONFIG["ewc_lambda"]
         num_samples = num_samples or INCREMENTAL_CONFIG["fisher_samples"]
@@ -113,15 +113,15 @@ class EWCRegularizer:
         start_time = time.time()
         self._compute_fisher(model, old_dataloader, device, num_samples)
         elapsed = time.time() - start_time
-        print(f"  [EWC] Fisher computation hoàn tất trong {elapsed:.1f}s")
+        print(f"  [EWC] Fisher computation completed in {elapsed:.1f}s")
     
     def _compute_fisher(self, model, loader, device, num_samples):
         """
-        Ước lượng đường chéo Fisher Information Matrix bằng gradient bình phương.
-        Chạy trên CPU nên giới hạn num_samples để tối ưu thời gian.
+        Estimate the diagonal Fisher Information Matrix using squared gradients.
+        Runs on CPU, limiting num_samples to optimize time.
         """
         model.eval()
-        # Cache GCN embeddings trước
+        # Cache GCN embeddings first
         model.update_gcn_embeddings()
         
         fisher = {n: torch.zeros_like(p) for n, p in model.named_parameters() if p.requires_grad}
@@ -356,7 +356,9 @@ def run_incremental_training(model, new_train_df, new_val_df,
     else:
         pos_weight = torch.tensor([1.0]).to(device)
     
-    criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(device)
+    # Criterion: BCEWithLogitsLoss (CPU-friendly)
+    criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+    
     optimizer = torch.optim.AdamW(
         model.parameters(),
         lr=config["fine_tune_lr"],

@@ -1,6 +1,6 @@
 """
-Checkpoint Manager: Quản lý phiên bản model, rollback, và quality gate.
-Giữ tối đa 5 checkpoints gần nhất + kiểm tra Validation Loss trước khi deploy.
+Checkpoint Manager: Handles model versioning, rollbacks, and quality gates.
+Retains up to max_keep recent checkpoints and evaluates quality metrics before deployment.
 """
 
 import os
@@ -14,11 +14,11 @@ from IncrementalPipeline.config import INCREMENTAL_CONFIG
 
 class CheckpointManager:
     """
-    Quản lý vòng đời checkpoint:
-    - Lưu checkpoint mới với version tự tăng
-    - Giữ tối đa N checkpoints gần nhất
-    - Quality gate: so sánh metrics trước khi promote
-    - Rollback: khôi phục checkpoint trước đó
+    Manages model checkpoint lifecycle:
+    - Save new checkpoints with auto-incrementing version numbers
+    - Keep up to N recent checkpoints
+    - Quality gate: compare performance metrics before promoting
+    - Rollback: restore a previous model checkpoint
     """
     
     def __init__(self, config=None):
@@ -33,10 +33,10 @@ class CheckpointManager:
     
     def get_existing_versions(self):
         """
-        Liệt kê tất cả checkpoint versions hiện có.
+        List all existing checkpoint versions.
         
         Returns:
-            list[tuple]: [(version_num, filepath), ...] sắp xếp tăng dần
+            list[tuple]: [(version_num, filepath), ...] sorted in ascending order
         """
         pattern = os.path.join(self.checkpoint_dir, f"{self.prefix}_v*.pth")
         files = glob.glob(pattern)
@@ -44,7 +44,6 @@ class CheckpointManager:
         for f in files:
             basename = os.path.basename(f)
             try:
-                # Parse: incremental_model_v3.pth → 3
                 v_str = basename.replace(f"{self.prefix}_v", "").replace(".pth", "")
                 versions.append((int(v_str), f))
             except ValueError:
@@ -53,7 +52,7 @@ class CheckpointManager:
         return versions
     
     def get_next_version(self):
-        """Trả về version number tiếp theo."""
+        """Return the next auto-incrementing version number."""
         existing = self.get_existing_versions()
         if not existing:
             return 1
@@ -61,15 +60,15 @@ class CheckpointManager:
     
     def save_checkpoint(self, model, metrics, new_vocab_sizes):
         """
-        Lưu checkpoint mới và dọn dẹp checkpoints cũ.
+        Save a new model checkpoint and clean up outdated versions.
         
         Args:
-            model: Neural_Network model
-            metrics: dict chứa val_loss, val_acc, f1, auc, ...
-            new_vocab_sizes: dict chứa vocab sizes hiện tại
+            model: Neural_Network instance
+            metrics: dict containing val_loss, val_acc, f1, auc
+            new_vocab_sizes: dict containing current vocabulary sizes
             
         Returns:
-            str: Đường dẫn file checkpoint đã lưu
+            str: Saved checkpoint file path
         """
         version = self.get_next_version()
         filename = f"{self.prefix}_v{version}.pth"
@@ -80,84 +79,61 @@ class CheckpointManager:
             'timestamp': time.time(),
             'model_state_dict': model.state_dict(),
             'metrics': metrics,
-<<<<<<< HEAD
-            # Lưu vocab sizes trực tiếp từ model layers để luôn chính xác 100%
-            'num_users': model.user_embedding.num_embeddings,
-            'num_items': model.item_embedding.num_embeddings,
-            'num_brands': model.brand_embedding.num_embeddings,
-            'num_categories': model.category_emb.num_embeddings,
-            'num_main_cats': model.main_category_emb.num_embeddings,
-            'num_colors': model.color_embedding.num_embeddings,
-            'num_stores': model.store_embedding.num_embeddings,
-            'num_parent_asins': model.parent_asin_embedding.num_embeddings,
-            'num_countries': model.country_embedding.num_embeddings,
-=======
-            # Lưu vocab sizes để rebuild model khi load
-            'num_users': new_vocab_sizes.get('num_users', 0),
-            'num_items': new_vocab_sizes.get('num_items', 0),
-            'num_brands': new_vocab_sizes.get('num_brands', 0),
-            'num_categories': new_vocab_sizes.get('num_categories', 0),
-            'num_main_cats': new_vocab_sizes.get('num_main_cats', 0),
-            'num_colors': new_vocab_sizes.get('num_colors', 0),
-            'num_stores': new_vocab_sizes.get('num_stores', 0),
-            'num_parent_asins': new_vocab_sizes.get('num_parent_asins', 0),
-            'num_countries': new_vocab_sizes.get('num_countries', 0),
->>>>>>> upstream/main
+            'num_users': getattr(model.user_embedding, 'num_embeddings', new_vocab_sizes.get('num_users', 0)),
+            'num_items': getattr(model.item_embedding, 'num_embeddings', new_vocab_sizes.get('num_items', 0)),
+            'num_brands': getattr(model.brand_embedding, 'num_embeddings', new_vocab_sizes.get('num_brands', 0)),
+            'num_categories': getattr(model.category_emb, 'num_embeddings', new_vocab_sizes.get('num_categories', 0)),
+            'num_main_cats': getattr(model.main_category_emb, 'num_embeddings', new_vocab_sizes.get('num_main_cats', 0)),
+            'num_colors': getattr(model.color_embedding, 'num_embeddings', new_vocab_sizes.get('num_colors', 0)),
+            'num_stores': getattr(model.store_embedding, 'num_embeddings', new_vocab_sizes.get('num_stores', 0)),
+            'num_parent_asins': getattr(model.parent_asin_embedding, 'num_embeddings', new_vocab_sizes.get('num_parent_asins', 0)),
+            'num_countries': getattr(model.country_embedding, 'num_embeddings', new_vocab_sizes.get('num_countries', 0)),
         }
         
         torch.save(checkpoint, filepath)
-        print(f"  [CHECKPOINT] Đã lưu v{version}: {filepath}")
+        print(f"  [CHECKPOINT] Saved checkpoint v{version}: {filepath}")
         
-        # Log metrics
         self._log_metrics(version, metrics)
-        
-        # Dọn dẹp checkpoints cũ (giữ max N)
         self._cleanup_old_checkpoints()
         
         return filepath
     
     def promote_to_production(self, checkpoint_path):
         """
-        Promote checkpoint thành model production (best_model_v2.pth).
-        Tạo bản backup trước khi ghi đè.
+        Promote a checkpoint to production model (best_model_v2.pth).
         """
         if os.path.exists(self.best_model_path):
             backup_path = self.best_model_path.replace(".pth", "_backup.pth")
-            # Chỉ giữ 1 bản backup cuối
             if os.path.exists(backup_path):
                 os.remove(backup_path)
             os.rename(self.best_model_path, backup_path)
-            print(f"  [CHECKPOINT] Backup model cũ → {backup_path}")
+            print(f"  [CHECKPOINT] Created backup of old model -> {backup_path}")
         
-        # Copy checkpoint thành production model
         checkpoint = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
         torch.save(checkpoint, self.best_model_path)
-        print(f"  [CHECKPOINT] ✅ Promoted → {self.best_model_path}")
+        print(f"  [CHECKPOINT] Promoted to production -> {self.best_model_path}")
     
     def quality_gate(self, new_metrics, old_checkpoint_path=None):
         """
-        Kiểm tra xem model mới có đủ chất lượng để deploy không.
-        So sánh với metrics của checkpoint production hiện tại.
+        Evaluate if new model meets performance criteria to deploy.
         
         Returns:
-            (bool, str): (pass/fail, reason message)
+            (bool, str): (passed/failed, reason message)
         """
         old_path = old_checkpoint_path or self.best_model_path
         
         if not os.path.exists(old_path):
-            print("  [QUALITY GATE] Không tìm thấy model cũ — auto-pass")
-            return True, "Không có model cũ để so sánh"
+            print("  [QUALITY GATE] No existing baseline model found -- auto-pass")
+            return True, "No baseline model to compare"
         
         old_checkpoint = torch.load(old_path, map_location='cpu', weights_only=False)
         
-        # Lấy metrics cũ
         old_metrics = old_checkpoint.get('metrics', {})
         if not old_metrics:
-            # Fallback: lấy từ top-level keys (format cũ)
             old_metrics = {
                 'auc': old_checkpoint.get('auc', 0),
                 'f1': old_checkpoint.get('f1', 0),
-                'val_loss': old_checkpoint.get('test_acc', 0),  # Fallback
+                'val_loss': old_checkpoint.get('test_acc', 0),
             }
         
         old_auc = old_metrics.get('auc', 0)
@@ -168,66 +144,57 @@ class CheckpointManager:
         max_auc_drop = self.config["quality_gate_auc_drop"]
         max_f1_drop = self.config["quality_gate_f1_drop"]
         
-        print(f"\n  [QUALITY GATE] So sánh:")
-        print(f"    AUC: {old_auc:.4f} → {new_auc:.4f} (cho phép giảm {max_auc_drop})")
-        print(f"    F1:  {old_f1:.4f} → {new_f1:.4f} (cho phép giảm {max_f1_drop})")
+        print(f"\n  [QUALITY GATE] Metric Comparison:")
+        print(f"    AUC: {old_auc:.4f} -> {new_auc:.4f} (max allowed drop: {max_auc_drop})")
+        print(f"    F1:  {old_f1:.4f} -> {new_f1:.4f} (max allowed drop: {max_f1_drop})")
         
-        # Kiểm tra AUC
         if old_auc > 0 and (old_auc - new_auc) > max_auc_drop:
-            reason = f"AUC giảm quá mức: {old_auc:.4f} → {new_auc:.4f} (giảm {old_auc - new_auc:.4f} > {max_auc_drop})"
-            print(f"  ❌ FAILED: {reason}")
+            reason = f"AUC drop exceeded threshold: {old_auc:.4f} -> {new_auc:.4f} (drop: {old_auc - new_auc:.4f} > {max_auc_drop})"
+            print(f"  [QUALITY GATE] FAILED: {reason}")
             return False, reason
         
-        # Kiểm tra F1
         if old_f1 > 0 and (old_f1 - new_f1) > max_f1_drop:
-            reason = f"F1 giảm quá mức: {old_f1:.4f} → {new_f1:.4f} (giảm {old_f1 - new_f1:.4f} > {max_f1_drop})"
-            print(f"  ❌ FAILED: {reason}")
+            reason = f"F1 drop exceeded threshold: {old_f1:.4f} -> {new_f1:.4f} (drop: {old_f1 - new_f1:.4f} > {max_f1_drop})"
+            print(f"  [QUALITY GATE] FAILED: {reason}")
             return False, reason
         
-        print("  ✅ PASSED — Model mới đạt chất lượng!")
+        print("  [QUALITY GATE] PASSED -- New model meets deployment quality criteria.")
         return True, "Quality gate passed"
     
     def rollback(self, version=None):
         """
-        Rollback về checkpoint trước đó.
-        
-        Args:
-            version: Version cụ thể muốn rollback. None = version gần nhất trước production.
-        
-        Returns:
-            str: Đường dẫn checkpoint đã rollback, hoặc None nếu thất bại
+        Rollback production model to a previous checkpoint version.
         """
         existing = self.get_existing_versions()
         
         if not existing:
-            print("  [ROLLBACK] Không có checkpoint nào để rollback!")
+            print("  [ROLLBACK] No existing checkpoint available for rollback!")
             return None
         
         if version is not None:
             target = [(v, p) for v, p in existing if v == version]
             if not target:
-                print(f"  [ROLLBACK] Không tìm thấy version {version}")
+                print(f"  [ROLLBACK] Checkpoint version {version} not found")
                 return None
             _, target_path = target[0]
         else:
-            # Lấy version gần nhất (cuối danh sách)
             _, target_path = existing[-1]
         
         self.promote_to_production(target_path)
-        print(f"  [ROLLBACK] ✅ Đã rollback về: {target_path}")
+        print(f"  [ROLLBACK] Successfully rolled back to: {target_path}")
         return target_path
     
     def _cleanup_old_checkpoints(self):
-        """Xóa checkpoints cũ, giữ tối đa max_keep gần nhất."""
+        """Remove old checkpoints beyond the max_keep limit."""
         existing = self.get_existing_versions()
         if len(existing) > self.max_keep:
             to_remove = existing[:len(existing) - self.max_keep]
             for version, filepath in to_remove:
                 os.remove(filepath)
-                print(f"  [CHECKPOINT] Xóa checkpoint cũ v{version}: {filepath}")
+                print(f"  [CHECKPOINT] Removed old checkpoint v{version}: {filepath}")
     
     def _log_metrics(self, version, metrics):
-        """Ghi metrics vào file CSV để theo dõi drift theo thời gian."""
+        """Log checkpoint evaluation metrics to CSV file."""
         file_exists = os.path.exists(self.metrics_log)
         
         with open(self.metrics_log, 'a', newline='') as f:
@@ -245,9 +212,9 @@ class CheckpointManager:
             ])
     
     def print_checkpoint_history(self):
-        """In danh sách tất cả checkpoints hiện có."""
+        """Display history of existing checkpoints."""
         existing = self.get_existing_versions()
-        print(f"\n  📦 Checkpoint History ({len(existing)} versions):")
+        print(f"\n  Checkpoint History ({len(existing)} versions):")
         for version, filepath in existing:
             size_mb = os.path.getsize(filepath) / (1024 * 1024)
             mtime = time.strftime('%Y-%m-%d %H:%M', time.localtime(os.path.getmtime(filepath)))

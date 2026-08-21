@@ -333,7 +333,7 @@ public class ProductServiceImp implements ProductService {
                     .title(p.getTitle())
                     .price(
                             p.getPrice() != null
-                                    ? new BigDecimal(p.getPrice().toString()) 
+                                    ? new BigDecimal(p.getPrice().toString())
                                     : BigDecimal.ZERO)
                     .image(p.getImageUrl())
                     .category(p.getCategory())

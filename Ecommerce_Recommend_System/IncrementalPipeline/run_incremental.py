@@ -1,21 +1,21 @@
 """
-Orchestration Pipeline: Script chính để chạy toàn bộ quy trình Incremental Learning.
+Orchestration Pipeline: Main execution script for the Incremental Learning workflow.
 
-Quy trình:
-  1. Kiểm tra điều kiện trigger (N >= 500 bản ghi HOẶC >= 24h)
-  2. Truy vấn dữ liệu mới từ PostgreSQL
-  3. Validate dữ liệu
-  4. Mở rộng encoders + mã hóa dữ liệu mới
-  5. Load model checkpoint + mở rộng embeddings
-  6. Cập nhật đồ thị GCN
-  7. Tính Fisher Information (EWC) trên mẫu dữ liệu cũ
-  8. Fine-tune model trên dữ liệu mới
-  9. Kiểm tra quality gate
-  10. Lưu checkpoint + promote nếu đạt chất lượng
+Workflow steps:
+  1. Trigger condition check (N >= 500 records OR >= 24h interval)
+  2. Query new interaction data from PostgreSQL
+  3. Validate incoming data
+  4. Expand encoders & encode new data
+  5. Load model checkpoint & expand embedding layers
+  6. Update GCN graph structure
+  7. Compute Fisher Information (EWC) on old data sample
+  8. Fine-tune model on new data with EWC regularization
+  9. Evaluate quality gate thresholds
+  10. Save checkpoint & promote to production if quality gate passes
 
-Chạy:
+Usage:
   python IncrementalPipeline/run_incremental.py
-  python IncrementalPipeline/run_incremental.py --force    # Bỏ qua trigger check
+  python IncrementalPipeline/run_incremental.py --force    # Bypass trigger check
 """
 
 import os
@@ -28,7 +28,6 @@ import torch
 from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
 
-# Thêm project root vào path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from IncrementalPipeline.config import INCREMENTAL_CONFIG
@@ -51,22 +50,17 @@ from Models.recommend_system import Neural_Network
 
 def check_trigger_conditions():
     """
-    Kiểm tra xem có nên kích hoạt incremental training không.
-    Hybrid trigger: N >= 500 bản ghi mới HOẶC >= 24h kể từ lần train cuối.
-    
-    Returns:
-        (bool, str): (should_trigger, reason)
+    Check if incremental training should be triggered.
+    Hybrid trigger: N >= 500 new interaction records OR >= 24h since last training run.
     """
     config = INCREMENTAL_CONFIG
     
-    # Check 1: Số bản ghi mới
     new_df = fetch_new_interactions_from_db()
     num_new = len(new_df)
     
     if num_new >= config["trigger_min_interactions"]:
-        return True, f"Volume trigger: {num_new} >= {config['trigger_min_interactions']} bản ghi mới"
+        return True, f"Volume trigger: {num_new} >= {config['trigger_min_interactions']} new interaction records"
     
-    # Check 2: Thời gian từ lần train cuối
     metrics_log = config["metrics_log_path"]
     if os.path.exists(metrics_log):
         df_log = pd.read_csv(metrics_log)
@@ -75,45 +69,40 @@ def check_trigger_conditions():
             hours_since = (pd.Timestamp.now() - last_train_time).total_seconds() / 3600
             if hours_since >= config["trigger_interval_hours"]:
                 if num_new > 0:
-                    return True, f"Time trigger: {hours_since:.1f}h >= {config['trigger_interval_hours']}h ({num_new} bản ghi mới)"
+                    return True, f"Time trigger: {hours_since:.1f}h >= {config['trigger_interval_hours']}h ({num_new} new records)"
                 else:
-                    return False, f"Time trigger đạt nhưng không có bản ghi mới"
+                    return False, "Time trigger reached but no new interaction records found"
     else:
-        # Chưa từng train incremental → trigger nếu có data
         if num_new > 0:
-            return True, f"First run: {num_new} bản ghi mới (chưa có lịch sử training)"
+            return True, f"Initial run: {num_new} new records (no previous training history)"
     
-    return False, f"Chưa đạt điều kiện trigger: {num_new} bản ghi ({config['trigger_min_interactions']} cần)"
+    return False, f"Trigger conditions not met: {num_new} new records ({config['trigger_min_interactions']} required)"
 
 
 def load_old_sample_dataloader(config):
     """
-    Load mẫu dữ liệu cũ (10%) để tính Fisher Information Matrix cho EWC.
+    Load a sample of old dataset (10%) to estimate the Fisher Information Matrix for EWC.
     """
     old_csv = config["product_rating_csv"]
     
     if not os.path.exists(old_csv):
-        print(f"  [WARN] Không tìm thấy dữ liệu cũ: {old_csv}")
+        print(f"  [WARN] Old dataset file not found: {old_csv}")
         return None
     
-    print(f"  Đang load mẫu dữ liệu cũ từ {old_csv}...")
+    print(f"  Loading old dataset sample from {old_csv}...")
     old_df = pd.read_csv(old_csv)
     
-    # Merge thêm thông tin từ sản phẩm để có các cột categorical/numerical
     product_csv = config["product_data_csv"]
     if os.path.exists(product_csv):
         prod_df = pd.read_csv(product_csv)
-        # Bỏ qua các cột trùng để tránh hậu tố _x _y, chỉ giữ parent_asin để làm key
         cols_to_use = [col for col in prod_df.columns if col == 'parent_asin' or col not in old_df.columns]
         old_df = old_df.merge(prod_df[cols_to_use], on='parent_asin', how='left')
     
-    # Lấy mẫu 10%
     sample_ratio = config["old_data_sample_ratio"]
     sample_size = max(int(len(old_df) * sample_ratio), config["fisher_samples"])
     sample_size = min(sample_size, len(old_df))
     old_sample = old_df.sample(n=sample_size, random_state=42)
     
-    # Cần build history cho old_sample
     old_sample = old_sample.sort_values(by=["user_code", "timestamp"] 
                                          if "timestamp" in old_sample.columns 
                                          else ["user_code"]).reset_index(drop=True)
@@ -123,7 +112,6 @@ def load_old_sample_dataloader(config):
     old_sample['history_brand_list'] = brand_h
     old_sample['history_cat_list'] = cat_h
     
-    # Fillna cho các cột có thể thiếu
     fill_cols = ['user_brand_count_scaled', 'price_deviation', 'user_recency_scaled',
                  'item_avg_rating', 'average_rating', 'rating_number',
                  'user_avg_rating', 'user_rating_var', 'price_scaled']
@@ -146,18 +134,17 @@ def load_old_sample_dataloader(config):
         num_workers=0,
     )
     
-    print(f"  ✅ Loaded {len(old_sample)} mẫu cũ cho Fisher computation")
+    print(f"  Loaded {len(old_sample)} old dataset samples for Fisher matrix estimation")
     return loader
 
 
 def load_model_from_checkpoint(checkpoint_path, device):
     """
-    Load Neural_Network model từ checkpoint.
+    Load Neural_Network model architecture and weights from checkpoint.
     """
-    print(f"  Đang load model từ {checkpoint_path}...")
+    print(f"  Loading model checkpoint from {checkpoint_path}...")
     checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
     
-    # Cần dữ liệu cũ để xây dựng edge_index
     old_csv = INCREMENTAL_CONFIG["product_rating_csv"]
     old_df = pd.read_csv(old_csv)
     
@@ -192,61 +179,52 @@ def load_model_from_checkpoint(checkpoint_path, device):
     model.load_state_dict(checkpoint['model_state_dict'])
     model.to(device)
     
-    print(f"  ✅ Model loaded (vocab: users={checkpoint['num_users']}, items={checkpoint['num_items']})")
+    print(f"  Model loaded successfully (vocab: users={checkpoint['num_users']}, items={checkpoint['num_items']})")
     return model, checkpoint
 
 
 def run_pipeline(force=False):
     """
-    Chạy toàn bộ pipeline Incremental Learning.
-    
-    Args:
-        force: Nếu True, bỏ qua trigger check và chạy ngay
+    Run the complete Incremental Learning pipeline.
     """
     config = INCREMENTAL_CONFIG
-    device = torch.device('cpu')  # CPU-only mode
+    device = torch.device('cpu')
     
-    print("\n" + "═" * 70)
-    print("🚀 INCREMENTAL LEARNING PIPELINE")
-    print(f"   Thời gian: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    print("\n" + "=" * 70)
+    print("INCREMENTAL LEARNING PIPELINE")
+    print(f"   Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"   Device: {device}")
-    print("═" * 70)
+    print("=" * 70)
     
-    # ── Step 1: Kiểm tra trigger ──
     if not force:
         should_trigger, reason = check_trigger_conditions()
-        print(f"\n📋 Step 1 — Trigger Check: {reason}")
+        print(f"\nStep 1 -- Trigger Check: {reason}")
         if not should_trigger:
-            print("  ⏸️  Chưa đạt điều kiện — pipeline kết thúc.")
+            print("  Pipeline execution stopped: Trigger condition not met.")
             return
     else:
-        print("\n📋 Step 1 — Trigger Check: SKIPPED (--force mode)")
+        print("\nStep 1 -- Trigger Check: SKIPPED (--force mode)")
     
-    # ── Step 2: Truy vấn dữ liệu mới ──
-    print("\n📋 Step 2 — Truy vấn dữ liệu mới từ PostgreSQL...")
+    print("\nStep 2 -- Fetching new interaction data from PostgreSQL...")
     new_df = fetch_new_interactions_from_db()
     
     if new_df.empty:
-        print("  ⏸️  Không có dữ liệu mới — pipeline kết thúc.")
+        print("  Pipeline execution stopped: No new interaction records found.")
         return
     
-    # ── Step 3: Validate dữ liệu ──
-    print("\n📋 Step 3 — Validate dữ liệu...")
+    print("\nStep 3 -- Validating input dataset...")
     if not validate_and_report(new_df):
-        print("  ❌ Dữ liệu không hợp lệ — pipeline kết thúc.")
+        print("  Pipeline execution stopped: Data validation failed.")
         return
     
-    # ── Step 4: Mở rộng encoders + mã hóa ──
-    print("\n📋 Step 4 — Mở rộng encoders và mã hóa dữ liệu mới...")
+    print("\nStep 4 -- Expanding encoders and encoding new interactions...")
     encoders, new_vocab_sizes = load_and_expand_encoders(new_df)
     encoded_df = encode_new_data(new_df, encoders)
     
-    # Binarize rating (giống logic cũ: 5 → 1, còn lại → 0)
     if 'rating' in encoded_df.columns:
         encoded_df['rating'] = pd.to_numeric(encoded_df['rating'], errors='coerce')
         encoded_df['rating'] = np.where(encoded_df['rating'] == 5, 1, 0).astype(float)
     
-    # User stats (giống data_preprocessing.py)
     if 'user_id' in new_df.columns and 'rating' in new_df.columns:
         raw_ratings = pd.to_numeric(new_df['rating'], errors='coerce')
         user_avg = raw_ratings.groupby(new_df['user_id']).mean()
@@ -255,11 +233,9 @@ def run_pipeline(force=False):
         user_var = raw_ratings.groupby(new_df['user_id']).var().fillna(0)
         encoded_df['user_rating_var'] = new_df['user_id'].map(user_var).fillna(0)
     
-    # Feature engineering
     featured_df = compute_incremental_features(encoded_df)
     
-    # ── Step 5: Build causal history ──
-    print("\n📋 Step 5 — Build causal history sequences...")
+    print("\nStep 5 -- Constructing causal history sequences...")
     featured_df = featured_df.sort_values(
         by=["user_code", "timestamp_numeric"] if "timestamp_numeric" in featured_df.columns else ["user_code"]
     ).reset_index(drop=True)
@@ -269,7 +245,6 @@ def run_pipeline(force=False):
     featured_df['history_brand_list'] = brand_h
     featured_df['history_cat_list'] = cat_h
     
-    # Train/Val split
     val_ratio = config["validation_split"]
     if len(featured_df) > 10:
         train_df, val_df = train_test_split(
@@ -283,35 +258,30 @@ def run_pipeline(force=False):
     train_df = train_df.reset_index(drop=True)
     val_df = val_df.reset_index(drop=True)
     
-    print(f"  Train: {len(train_df)}, Validation: {len(val_df)}")
+    print(f"  Training set size: {len(train_df)}, Validation set size: {len(val_df)}")
     
-    # ── Step 6: Load model + expand embeddings ──
-    print("\n📋 Step 6 — Load model và mở rộng embeddings...")
+    print("\nStep 6 -- Loading base model and expanding embedding layers...")
     model, old_checkpoint = load_model_from_checkpoint(config["best_model_path"], device)
     model.expand_vocabularies(new_vocab_sizes)
     
-    # ── Step 7: Build new edges cho GCN ──
-    print("\n📋 Step 7 — Cập nhật đồ thị GCN với tương tác mới...")
+    print("\nStep 7 -- Updating GCN graph structure with new interactions...")
     if 'user_code' in train_df.columns and 'asin_code' in train_df.columns:
         num_users_total = new_vocab_sizes.get('num_users', int(train_df['user_code'].max() + 1))
         new_edge_src = torch.tensor(train_df['user_code'].values, dtype=torch.long)
         new_edge_dst = torch.tensor(train_df['asin_code'].values + num_users_total, dtype=torch.long)
         new_edge_index = torch.stack([new_edge_src, new_edge_dst], dim=0)
         new_edge_weight = torch.tensor(train_df['rating'].values, dtype=torch.float32).clamp(min=0.1)
-        # Bidirectional
         new_edge_index = torch.cat([new_edge_index, new_edge_index.flip(0)], dim=1)
         new_edge_weight = torch.cat([new_edge_weight, new_edge_weight], dim=0)
         model.update_graph(new_edge_index, new_edge_weight)
     
-    # ── Step 8: Load old data sample cho EWC ──
-    print("\n📋 Step 8 — Chuẩn bị dữ liệu cũ cho EWC Fisher computation...")
+    print("\nStep 8 -- Preparing old dataset sample for EWC Fisher computation...")
     old_sample_loader = load_old_sample_dataloader(config)
     
     if old_sample_loader is None:
-        print("  ⚠️  Không có dữ liệu cũ — chạy fine-tune không có EWC")
+        print("  [WARN] No old dataset sample available -- fine-tuning without EWC regularization")
     
-    # ── Step 9: Fine-tune model ──
-    print("\n📋 Step 9 — Fine-tune model với EWC regularization...")
+    print("\nStep 9 -- Fine-tuning model with EWC regularization...")
     result = run_incremental_training(
         model=model,
         new_train_df=train_df,
@@ -324,43 +294,35 @@ def run_pipeline(force=False):
     model = result['model']
     
     if not metrics:
-        print("  ❌ Training thất bại — không có metrics. Pipeline kết thúc.")
+        print("  [ERROR] Training failed: No metrics computed. Pipeline terminated.")
         return
     
-    # ── Step 10: Quality gate + Checkpoint ──
-    print("\n📋 Step 10 — Quality gate & Checkpoint management...")
+    print("\nStep 10 -- Evaluating Quality Gate & Managing Checkpoints...")
     ckpt_manager = CheckpointManager(config)
     
-    # Quality gate
     passed, reason = ckpt_manager.quality_gate(metrics)
-    
-    # Lưu checkpoint (luôn lưu, bất kể pass/fail)
     ckpt_path = ckpt_manager.save_checkpoint(model, metrics, new_vocab_sizes)
     
     if passed:
-        # Promote thành production model
         ckpt_manager.promote_to_production(ckpt_path)
-        print("\n  🎉 Model mới đã được deploy thành công!")
+        print("\n  SUCCESS: New model checkpoint successfully deployed to production.")
     else:
-        print(f"\n  ⚠️  Model mới KHÔNG đạt quality gate: {reason}")
-        print("  Model được lưu nhưng KHÔNG promote thành production.")
-        print("  Sử dụng rollback nếu cần khôi phục.")
+        print(f"\n  [WARN] New model did not pass quality gate: {reason}")
+        print("  Checkpoint saved for inspection but NOT promoted to production.")
     
-    # ── Step 11: Đánh dấu dữ liệu đã xử lý ──
     if 'id' in new_df.columns:
         mark_interactions_as_trained(new_df['id'].tolist())
     
-    # In checkpoint history
     ckpt_manager.print_checkpoint_history()
     
-    print(f"\n  ⏱️  Pipeline hoàn tất trong {result['total_time']:.1f}s")
-    print("═" * 70 + "\n")
+    print(f"\n  Pipeline completed in {result['total_time']:.1f} seconds")
+    print("=" * 70 + "\n")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Incremental Learning Pipeline")
     parser.add_argument("--force", action="store_true", 
-                        help="Bỏ qua trigger check, chạy ngay lập tức")
+                        help="Bypass trigger check and run immediately")
     args = parser.parse_args()
     
     run_pipeline(force=args.force)

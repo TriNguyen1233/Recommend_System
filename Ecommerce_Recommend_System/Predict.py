@@ -93,14 +93,13 @@ class implement_recommend:
         product_info = self.Product_Data[self.Product_Data['parent_asin'] == parent_asin]
         
         if product_info.empty:
-            print(f"  [COLD START] Sản phẩm {parent_asin} không tìm thấy → False")
+            print(f"  [COLD START] Product {parent_asin} not found -> False")
             return False
         
         row = product_info.iloc[0]
         avg_rating = float(row.get('average_rating', 0))
         rating_num = float(row.get('rating_number', 0))
         
-        # Score = 70% dựa trên rating trung bình + 30% dựa trên số lượt đánh giá
         rating_score = avg_rating / 5.0
         popularity_score = min(rating_num, 1000) / 1000.0
         score = rating_score * 0.7 + popularity_score * 0.3
@@ -108,9 +107,9 @@ class implement_recommend:
         is_recommended = score >= 0.5
         
         print(f"\n=========================================")
-        print(f" [COLD START] Dự đoán cho Sản phẩm '{parent_asin}':")
-        print(f" Avg Rating: {avg_rating:.1f} | Lượt đánh giá: {rating_num:.0f}")
-        print(f" Popularity Score: {score:.4f} → {'GỢI Ý ✅' if is_recommended else 'KHÔNG ❌'}")
+        print(f" [COLD START] Prediction for Product '{parent_asin}':")
+        print(f" Avg Rating: {avg_rating:.1f} | Rating Count: {rating_num:.0f}")
+        print(f" Popularity Score: {score:.4f} -> {'RECOMMENDED' if is_recommended else 'NOT RECOMMENDED'}")
         print(f"=========================================\n")
         
         return is_recommended
@@ -119,9 +118,8 @@ class implement_recommend:
         encoders = self.load_encoders()
         user_encoder = encoders['user']
 
-        # Kiểm tra user mới: nếu chưa có trong encoder → Cold Start fallback
         if user_id not in user_encoder.classes_:
-            print(f"[COLD START] User mới: {user_id} → Fallback Popularity-based")
+            print(f"[COLD START] New User: {user_id} -> Fallback to Popularity-based recommendation")
             return self._cold_start_predict(parent_asin)
         
         user_id_encoded = int(user_encoder.transform([user_id])[0])
@@ -132,16 +130,15 @@ class implement_recommend:
             weights_only=False
         )
 
-        # Fix 2: chỉ filter theo asin, không filter theo user
         product_rating_df = self.Product_Rating_Data[
             self.Product_Rating_Data['parent_asin'] == parent_asin
         ].head(1)
 
         if product_rating_df.empty:
-            print(f"Không tìm thấy sản phẩm: {parent_asin}")
+            print(f"Product not found: {parent_asin}")
             return None
 
-        # Fix 5: merge thêm thông tin từ Electronics_Product nếu thiếu cột
+        # Fix 5: merge product details from Electronics_Product if columns are missing
         needed_cols = ['average_rating', 'rating_number']
 
         for col in needed_cols:
@@ -151,14 +148,14 @@ class implement_recommend:
                     on='parent_asin', how='left'
                 )
 
-        # Fix 1: user_code phải là tensor 1D [1]
-      # === ĐOẠN CODE ĐÃ ĐƯỢC ĐỒNG BỘ ĐÚNG SCHEMA VÀ TRÍCH XUẤT ĐẶC TRƯNG ===
+        # Fix 1: user_code must be a 1D tensor [1]
+        # === SYNCED MODEL SCHEMA AND FEATURE EXTRACTION ===
         
-        # 1. Tìm thông tin của sản phẩm mục tiêu (target item) từ bảng Product_Data
+        # 1. Retrieve target product information from Product_Data
         current_product_info = self.Product_Data[self.Product_Data['parent_asin'] == parent_asin]
         
         if not current_product_info.empty:
-            # Nếu tìm thấy sản phẩm trong kho, trích xuất dữ liệu thô của chính sản phẩm đó
+            # If product is in catalog, extract raw product attributes
             prod_row = current_product_info.iloc[0]
             c_code = int(prod_row.get('category_code', 0))
             m_code = int(prod_row.get('main_category_code', 0))
@@ -166,7 +163,7 @@ class implement_recommend:
             col_code = int(prod_row.get('color_code', 0))
             st_code = int(prod_row.get('store_code', 0))
             pa_code = int(prod_row.get('parent_asin_code', 0))
-            a_code = int(prod_row.get('asin_code', pa_code)) # fallback sang parent nếu không có asin_code
+            a_code = int(prod_row.get('asin_code', pa_code)) # fallback to parent if asin_code missing
             
             p_scaled = float(prod_row.get('price_scaled', 0.0))
             avg_rat = float(prod_row.get('average_rating', 0.0))
@@ -174,11 +171,11 @@ class implement_recommend:
             it_avg_rat = float(prod_row.get('item_avg_rating', avg_rat))
             p_dev = float(prod_row.get('price_deviation', 0.0))
         else:
-            # Fallback mặc định nếu mã ASIN truyền vào test không tồn tại trong kho
+            # Default fallback if ASIN is not found in catalog
             c_code = m_code = b_code = col_code = st_code = pa_code = a_code = 0
             p_scaled = avg_rat = rat_num = it_avg_rat = p_dev = 0.0
 
-        # 2. Khởi tạo chính xác các Tensors đầu vào cho MLP (Khớp hoàn toàn cấu trúc shape)
+        # 2. Initialize input tensors for MLP (matching target shapes)
         user_code        = torch.tensor([user_id_encoded], dtype=torch.long)
         asin_tensor      = torch.tensor([a_code],          dtype=torch.long)
         category_code    = torch.tensor([c_code],          dtype=torch.long)
@@ -193,10 +190,10 @@ class implement_recommend:
         store_code       = torch.tensor([st_code],         dtype=torch.long)
         parent_asin_code = torch.tensor([pa_code],         dtype=torch.long)
         
-        # Các trường thông tin cố định hoặc lấy từ hồ sơ người dùng (User Profile)
-        country_code     = torch.tensor([0],               dtype=torch.long) # Mặc định quốc gia đầu tiên
+        # Fixed fields or fields retrieved from User Profile
+        country_code     = torch.tensor([0],               dtype=torch.long) # Default to first country
         
-        # Trích xuất thông tin hành vi người dùng (nếu có trong dữ liệu rating, ngược lại để mặc định cho user mới)
+        # Extract user profile statistics (fallback to default for new users)
         user_history = product_rating_df[product_rating_df['user_id'] == user_id]
         if not user_history.empty:
             u_avg = float(user_history['user_avg_rating'].values[0])
@@ -204,7 +201,7 @@ class implement_recommend:
             u_rec = float(user_history['user_recency_scaled'].values[0])
             u_brnd = float(user_history.get('user_brand_count_scaled', [0.0]).values[0])
         else:
-            u_avg = 4.0 # Trung bình mặc định của hệ thống
+            u_avg = 4.0 # System default average
             u_var = 0.5
             u_rec = 0.0
             u_brnd = 0.0
@@ -214,49 +211,41 @@ class implement_recommend:
         user_recency     = torch.tensor([u_rec],           dtype=torch.float32)
         user_brand_count = torch.tensor([u_brnd],          dtype=torch.float32)
         
-        # === KẾT THÚC ĐOẠN SỬA ===
+        # === END OF SYNCED BLOCK ===
 
-        # Clamp index trong range checkpoint
+        # Clamp indexes within checkpoint range
         user_code        = user_code.clamp(0, checkpoint['num_users'] - 1)
-        # asin_tensor      = asin_tensor.clamp(0, checkpoint['num_items'] - 1)
-        # brand_code       = brand_code.clamp(0, checkpoint['num_brands'] - 1)
-        # category_code    = category_code.clamp(0, checkpoint['num_categories'] - 1)
-        # main_category_code    = main_category_code.clamp(0, checkpoint['num_main_cats'] - 1)
-        # color_code       = color_code.clamp(0, checkpoint['num_colors'] - 1)
-        # store_code       = store_code.clamp(0, checkpoint['num_stores'] - 1)
-        # parent_asin_code = parent_asin_code.clamp(0, checkpoint['num_parent_asins'] - 1)
-        # country_code     = country_code.clamp(0, checkpoint['num_countries'] - 1)
 
         # History
-      # === ĐOẠN SỬA LỖI KEYERROR VÀ ZERO-PADDING CHO CHUỖI LỊCH SỬ GRU ===
+        # === GRU HISTORY SEQUENCES WITH ZERO-PADDING ===
         
-        # 1. Khởi tạo chuỗi rỗng mặc định cho cả 3 danh mục lịch sử
+        # 1. Initialize default empty history sequences
         recent_history_item = []
         recent_history_brand = []
         recent_history_cat = []
 
-        # 2. Kiểm tra nếu có dữ liệu lịch sử trong DataFrame (Ưu tiên nếu là User cũ có tương tác)
+        # 2. Fetch history if user has past interactions
         user_history_rows = product_rating_df[product_rating_df['user_id'] == user_id]
         
         if not user_history_rows.empty:
             row_idx = user_history_rows.index[0]
             
-            # Xử lý bóc tách chuỗi sản phẩm đã xem
+            # Extract historical items sequence
             if "history_list" in product_rating_df.columns:
                 raw_h = product_rating_df.at[row_idx, "history_list"]
                 recent_history_item = ast.literal_eval(raw_h) if isinstance(raw_h, str) else ([] if pd.isna(raw_h) else raw_h)
             
-            # Xử lý bóc tách chuỗi thương hiệu đã xem
+            # Extract historical brands sequence
             if "history_brand_list" in product_rating_df.columns:
                 raw_b = product_rating_df.at[row_idx, "history_brand_list"]
                 recent_history_brand = ast.literal_eval(raw_b) if isinstance(raw_b, str) else ([] if pd.isna(raw_b) else raw_b)
                 
-            # Xử lý bóc tách chuỗi danh mục đã xem
+            # Extract historical categories sequence
             if "history_cat_list" in product_rating_df.columns:
                 raw_c = product_rating_df.at[row_idx, "history_cat_list"]
                 recent_history_cat = ast.literal_eval(raw_c) if isinstance(raw_c, str) else ([] if pd.isna(raw_c) else raw_c)
 
-        # 3. Kỹ thuật Zero-Padding: Ép buộc độ dài chuỗi luôn bằng 10 để nạp vào GRU
+        # 3. Zero-Padding: Pad sequence to max length of 10 for GRU processing
         max_seq_len = 10
         
         def pad_sequence(seq):
@@ -296,8 +285,8 @@ class implement_recommend:
         # 7. Tính toán xác suất bằng hàm Sigmoid kích hoạt
         prob = torch.sigmoid(logit).item()
         print(f"\n=========================================")
-        print(f" Kết quả dự đoán cho User '{user_id}' và Sản phẩm '{parent_asin}':")
-        print(f" Xác suất tương tác (Probability): {prob:.4f}")
+        print(f" Prediction result for User '{user_id}' and Product '{parent_asin}':")
+        print(f" Interaction Probability: {prob:.4f}")
         print(f"=========================================\n")
 
         if prob >= 0.5:

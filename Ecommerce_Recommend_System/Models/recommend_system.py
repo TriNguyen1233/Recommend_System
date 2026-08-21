@@ -173,12 +173,12 @@ class Neural_Network(nn.Module):
 
     def expand_embedding(self, attr_name: str, new_num: int):
         """
-        Mở rộng bảng Embedding khi xuất hiện user/item/brand mới.
-        Giữ nguyên toàn bộ trọng số đã học, chỉ thêm hàng mới với khởi tạo nhỏ.
+        Expand the embedding table when new users, items, or brands appear.
+        Retain all previously learned weights, adding only new rows with small-value initialization.
         """
         old_emb = getattr(self, attr_name)
         if new_num <= old_emb.num_embeddings:
-            return  # Không cần mở rộng
+            return  # No expansion needed
         device = old_emb.weight.device
         new_emb = nn.Embedding(new_num, old_emb.embedding_dim).to(device)
         nn.init.normal_(new_emb.weight, mean=0.0, std=0.01)
@@ -189,10 +189,9 @@ class Neural_Network(nn.Module):
 
     def expand_vocabularies(self, new_vocab_sizes: dict):
         """
-        Mở rộng tất cả các bảng embedding theo vocab sizes mới.
-        
+        Expand all embedding tables to new sizes.
         Args:
-            new_vocab_sizes: dict với keys tương ứng checkpoint keys, ví dụ:
+            new_vocab_sizes: dict with keys matching checkpoint keys, e.g.:
                 {
                     'num_users': 15000,
                     'num_items': 8000,
@@ -215,12 +214,12 @@ class Neural_Network(nn.Module):
             if key in new_vocab_sizes:
                 for attr_name in attr_names:
                     self.expand_embedding(attr_name, new_vocab_sizes[key])
-        # Cập nhật GCN LayerNorm nếu cần (kích thước không đổi vì dim embedding cố định)
+        # Update GCN LayerNorm if needed (size unchanged as embedding dim is fixed)
 
     def update_graph(self, new_edge_index, new_edge_weight):
         """
-        Thêm cạnh mới vào đồ thị GCN mà không cần xây lại toàn bộ.
-        Tự động loại bỏ cạnh trùng lặp (giữ trọng số lớn nhất).
+        Add new edges to GCN graph without rebuilding the entire graph.
+        Automatically removes duplicate edges (keeps the largest weight).
         
         Args:
             new_edge_index:  [2, num_new_edges] tensor
@@ -230,20 +229,20 @@ class Neural_Network(nn.Module):
         new_edge_index = new_edge_index.to(device)
         new_edge_weight = new_edge_weight.to(device)
 
-        # Ghép cạnh cũ + mới
+        # Joining old and new edges
         combined_ei = torch.cat([self.edge_index, new_edge_index], dim=1)
         combined_ew = torch.cat([self.edge_weight, new_edge_weight], dim=0)
 
-        # Loại bỏ cạnh trùng lặp: chuyển (src, dst) thành key duy nhất
+        # Remove duplicate edges: convert (src, dst) to unique key
         num_nodes = combined_ei.max().item() + 1
         edge_keys = combined_ei[0] * num_nodes + combined_ei[1]
 
-        # Sắp xếp theo key, giữ trọng số lớn nhất cho mỗi cạnh trùng
+        # Sort by key, keep the largest weight for each duplicate edge
         unique_keys, inverse = torch.unique(edge_keys, return_inverse=True)
         max_weights = torch.zeros(unique_keys.shape[0], device=device)
         max_weights.scatter_reduce_(0, inverse, combined_ew, reduce='amax', include_self=False)
 
-        # Khôi phục edge_index từ keys
+        # Restore edge_index from keys
         deduped_src = unique_keys // num_nodes
         deduped_dst = unique_keys % num_nodes
         deduped_ei = torch.stack([deduped_src, deduped_dst], dim=0).long()
@@ -555,7 +554,7 @@ def main():
     pos_weight = torch.tensor([len(df_neg) / len(df_pos)]).to(device)
     criterion  = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(device)
 
-    # FIX 4: weight_decay tăng lên 2e-3
+
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=2e-3)
     scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5,
                                 min_lr=1e-6)
