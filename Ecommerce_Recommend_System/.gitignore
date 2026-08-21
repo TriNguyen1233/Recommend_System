@@ -4,3 +4,14 @@
 # Chặn file cấu hình bảo mật Firebase
 *.json
 .env
+# Ignore ONNX model exports (large files)
+*.onnx
+*.onnx.data
+
+# Ignore Python bytecode
+*.pyc
+*.pyo
+
+# Ignore Simulator output data
+Simulator/output/*.json
+Simulator/output/*.csv
