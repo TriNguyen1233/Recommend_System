@@ -7,7 +7,7 @@ import pandas as pd
 load_dotenv()
 
 def title_embedding(title):
-    # Tránh crash nếu tiêu đề bị rỗng (NaN)
+  # Avoid crash if the title is empty (NaN)
     if not title or pd.isna(title):
         title = "Unknown Product"
         
